@@ -1,1 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tidemedix - Prescription Weight Loss, Delivered</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #111827;
+    --bg2: #1a1a2e;
+    --card: rgba(255,255,255,0.05);
+    --card-border: rgba(255,255,255,0.1);
+    --teal: #0d9488;
+    --teal-light: #14b8a6;
+    --cyan: #06b6d4;
+    --green: #10b981;
+    --white: #f8fafc;
+    --gray: #94a3b8;
+    --gray-dark: #64748b;
+    --text: #e2e8f0;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(135deg, var(--teal), var(--cyan));
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-logo {
+    font-size: 18px; font-weight: 800; color: #fff;
+    letter-spacing: 2px;
+  }
+  .header-menu { font-size: 20px; color: #fff; cursor: pointer; }
+  .header-cart { font-size: 18px; color: #fff; cursor: pointer; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(180deg, #0d3d56 0%, var(--bg) 100%);
+    padding: 40px 20px 32px;
+    text-align: center;
+  }
+  .hero-stats {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+  .hero-stats-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .hero-stats-header span { font-size: 28px; }
+  .hero-stats-title { font-size: 16px; font-weight: 700; color: #fff; text-align: left; }
+  .hero-stats-sub { font-size: 12px; color: var(--gray); text-align: left; }
+  .stats-row { display: flex; gap: 10px; margin-bottom: 8px; }
+  .stat-card {
+    flex: 1;
+    background: rgba(13,148,136,0.15);
+    border: 1px solid rgba(13,148,136,0.25);
+    border-radius: 12px;
+    padding: 16px 12px;
+    text-align: center;
+  }
+  .stat-value { font-size: 28px; font-weight: 800; color: #fff; }
+  .stat-label { font-size: 11px; color: var(--gray); margin-top: 2px; }
+  .stat-disclaimer { font-size: 10px; color: var(--gray-dark); text-align: left; }
+
+  .hero h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; line-height: 1.2; }
+  .hero h1 span { color: var(--teal-light); }
+  .hero-sub { font-size: 14px; color: var(--gray); margin-bottom: 24px; }
+
+  /* CTA Button */
+  .cta-btn {
+    display: block; width: 100%; max-width: 480px; margin: 0 auto;
+    padding: 18px 24px;
+    background: linear-gradient(135deg, var(--teal), var(--cyan));
+    color: #fff; border: none; border-radius: 14px;
+    font-size: 17px; font-weight: 700; cursor: pointer;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 20px rgba(13,148,136,0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .cta-btn:active { transform: scale(0.98); }
+  .cta-sub { font-size: 12px; color: rgba(0,0,0,0.6); font-weight: 400; display: block; margin-top: 4px; }
+
+  /* Trust bar */
+  .trust-bar {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .trust-item { font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 6px; }
+
+  /* Section */
+  .section { padding: 40px 20px; max-width: 560px; margin: 0 auto; }
+  .section-title { font-size: 22px; font-weight: 700; color: #fff; text-align: center; margin-bottom: 24px; }
+
+  /* How It Works */
+  .step-item {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .step-icon { font-size: 28px; flex-shrink: 0; }
+  .step-label { font-size: 11px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 1px; }
+  .step-name { font-size: 16px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .step-desc { font-size: 13px; color: var(--gray); margin-top: 2px; }
+
+  /* Treatments */
+  .treatments-section { background: rgba(255,255,255,0.02); padding: 40px 20px; }
+  .treatments-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    max-width: 560px; margin: 0 auto;
+  }
+  .treatment-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 18px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .treatment-card:hover { border-color: rgba(13,148,136,0.4); }
+  .treatment-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--teal);
+    margin-bottom: 8px;
+  }
+  .treatment-icon { font-size: 24px; margin-bottom: 8px; }
+  .treatment-name { font-size: 15px; font-weight: 700; color: #fff; }
+  .treatment-price { font-size: 18px; font-weight: 800; color: var(--teal-light); margin-top: 4px; }
+  .treatment-retail { font-size: 12px; color: var(--gray-dark); text-decoration: line-through; }
+
+  /* Pricing highlight */
+  .pricing-card {
+    background: linear-gradient(135deg, rgba(13,148,136,0.2), rgba(6,182,212,0.15));
+    border: 1px solid rgba(13,148,136,0.3);
+    border-radius: 16px;
+    padding: 28px 24px;
+    max-width: 560px; margin: 32px auto 0;
+    text-align: center;
+  }
+  .pricing-drug { font-size: 13px; font-weight: 700; color: var(--teal); letter-spacing: 1.5px; text-transform: uppercase; }
+  .pricing-retail { font-size: 13px; color: var(--gray-dark); text-decoration: line-through; margin-top: 4px; }
+  .pricing-amount { font-size: 48px; font-weight: 800; color: #fff; margin: 8px 0; }
+  .pricing-amount span { font-size: 18px; font-weight: 500; color: var(--gray); }
+  .pricing-note { font-size: 13px; color: var(--gray); margin-bottom: 16px; }
+  .pricing-features { list-style: none; text-align: left; max-width: 280px; margin: 0 auto 20px; }
+  .pricing-features li {
+    padding: 6px 0; font-size: 14px; color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pricing-features li::before { content: "✓"; color: var(--green); font-weight: 700; }
+
+  /* Patient Stories */
+  .stories-section { padding: 40px 20px; }
+  .story-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 12px;
+    max-width: 560px; margin-left: auto; margin-right: auto;
+    margin-bottom: 12px;
+  }
+  .story-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .story-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--cyan));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .story-info { margin-left: 12px; flex: 1; }
+  .story-name { font-size: 14px; font-weight: 700; color: #fff; }
+  .story-label { font-size: 12px; color: var(--gray); }
+  .story-stars { font-size: 14px; color: #f59e0b; }
+  .story-text { font-size: 14px; color: var(--gray); font-style: italic; line-height: 1.6; }
+
+  /* Footer */
+  .footer {
+    background: #0a0e17;
+    padding: 32px 20px;
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .footer-logo { font-size: 18px; font-weight: 800; color: var(--teal); letter-spacing: 2px; margin-bottom: 6px; }
+  .footer-tagline { font-size: 13px; color: var(--gray); margin-bottom: 16px; }
+  .footer-links { display: flex; gap: 20px; justify-content: center; margin-bottom: 16px; }
+  .footer-links a { font-size: 13px; color: var(--gray-dark); text-decoration: none; }
+  .footer-links a:hover { color: var(--teal); }
+  .footer-copy { font-size: 11px; color: var(--gray-dark); }
+
+  /* Sticky bottom CTA */
+  .sticky-cta {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 16px;
+    background: rgba(17,24,39,0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    z-index: 40;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+  .sticky-cta.visible {
+    transform: translateY(0);
+  }
+  .sticky-cta .cta-btn {
+    padding: 16px;
+    font-size: 16px;
+    box-shadow: 0 -4px 20px rgba(13,148,136,0.3);
+  }
+
+  /* Bottom padding for sticky CTA */
+  .page-content { padding-bottom: 100px; }
+
+  /* ============================================ */
+  /* QUIZ OVERLAY */
+  /* ============================================ */
+  .quiz-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg);
+    overflow-y: auto;
+    transition: opacity 0.3s;
+  }
+  .quiz-overlay.hidden { display: none; }
+
+  .quiz-header {
+    position: sticky; top: 0; z-index: 10;
+    background: linear-gradient(135deg, var(--teal), var(--cyan));
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .quiz-close { font-size: 24px; color: #fff; cursor: pointer; background: none; border: none; }
+  .quiz-step-label { font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 500; }
+
+  .progress-outer { width: 100%; height: 4px; background: #2d2d4a; }
+  .progress-inner {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--teal), var(--green));
+    transition: width 0.4s ease;
+    border-radius: 0 2px 2px 0;
+  }
+
+  .quiz-body {
+    max-width: 520px; margin: 0 auto;
+    padding: 28px 20px 120px;
+  }
+
+  .quiz-phase {
+    font-size: 11px; font-weight: 700; color: var(--teal);
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;
+  }
+  .quiz-question { font-size: 22px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 6px; }
+  .quiz-subtitle { font-size: 14px; color: var(--gray); margin-bottom: 24px; line-height: 1.6; }
+
+  .quiz-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px; margin-bottom: 10px;
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quiz-option:hover { border-color: rgba(13,148,136,0.3); }
+  .quiz-option.selected {
+    background: rgba(13,148,136,0.12);
+    border-color: var(--teal);
+  }
+  .quiz-option-icon { font-size: 20px; flex-shrink: 0; }
+  .quiz-option-label { font-size: 15px; font-weight: 600; color: #fff; }
+  .quiz-option-sub { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+  .quiz-checkbox {
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #4a5568; background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .quiz-option.selected .quiz-checkbox {
+    background: var(--teal); border-color: var(--teal);
+  }
+
+  .quiz-btn {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--teal), #0e7490);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    margin-top: 16px; letter-spacing: 0.3px;
+    transition: opacity 0.15s;
+  }
+  .quiz-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .quiz-input-group { margin-bottom: 16px; }
+  .quiz-label {
+    font-size: 12px; font-weight: 600; color: var(--gray);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 6px; display: block;
+  }
+  .quiz-input {
+    width: 100%; padding: 14px 16px;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 12px; font-size: 16px; color: #fff;
+    outline: none; font-family: inherit;
+  }
+  .quiz-input::placeholder { color: #4a5568; }
+  .quiz-input:focus { border-color: rgba(13,148,136,0.4); }
+  select.quiz-input { appearance: auto; background: rgba(255,255,255,0.08); }
+
+  .quiz-row { display: flex; gap: 12px; }
+
+  .sex-btn {
+    flex: 1; padding: 14px; text-align: center;
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 12px; background: transparent;
+    color: var(--gray); font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .sex-btn.selected {
+    border-color: var(--teal); color: var(--teal);
+    background: rgba(13,148,136,0.12);
+  }
+
+  .hipaa-badge {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px; margin-top: 14px;
+    background: rgba(13,148,136,0.08);
+    border: 1px solid rgba(13,148,136,0.15);
+    border-radius: 10px;
+    font-size: 12px; color: var(--teal); font-weight: 500;
+  }
+
+  .bmi-display {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; margin-bottom: 8px;
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 10px;
+  }
+  .bmi-label { font-size: 13px; color: var(--gray); }
+  .bmi-value { font-size: 15px; font-weight: 700; }
+
+  /* Analyzing screen */
+  .analyzing-screen { text-align: center; padding-top: 60px; }
+  .spinner {
+    width: 48px; height: 48px; margin: 0 auto 28px;
+    border: 4px solid #2d2d4a; border-top: 4px solid var(--teal);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .analyze-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; font-size: 15px; font-weight: 500; }
+  .analyze-item.done { color: var(--green); }
+  .analyze-item.active { color: #fff; }
+  .analyze-item.pending { color: #4a5568; }
+
+  /* Choose plan */
+  .eligible-banner {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 14px; padding: 20px;
+    text-align: center; margin-bottom: 24px;
+  }
+  .eligible-emoji { font-size: 32px; margin-bottom: 8px; }
+  .eligible-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .eligible-sub { font-size: 13px; color: var(--gray); }
+
+  .plan-card {
+    padding: 24px; margin-bottom: 14px;
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    border-radius: 16px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .plan-card:hover { border-color: rgba(13,148,136,0.3); }
+  .plan-card.selected { border-color: var(--teal); background: rgba(13,148,136,0.1); }
+  .plan-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 6px; margin-bottom: 10px;
+  }
+  .plan-badge.green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .plan-badge.cyan { background: rgba(6,182,212,0.15); color: var(--cyan); }
+  .plan-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .plan-name { font-size: 20px; font-weight: 700; color: #fff; }
+  .plan-type { font-size: 13px; color: var(--gray); margin-top: 4px; }
+  .plan-price { font-size: 32px; font-weight: 800; color: #fff; }
+  .plan-price-unit { font-size: 16px; font-weight: 500; color: var(--gray); }
+  .plan-retail { font-size: 12px; color: var(--gray-dark); text-decoration: line-through; }
+  .plan-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .plan-tag {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  }
+  .plan-tag.teal { color: var(--teal); background: rgba(13,148,136,0.1); }
+  .plan-tag.cyan { color: var(--cyan); background: rgba(6,182,212,0.1); }
+
+  /* Contact summary */
+  .plan-summary {
+    background: rgba(13,148,136,0.1);
+    border: 1px solid rgba(13,148,136,0.2);
+    border-radius: 12px; padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+  .plan-summary-name { font-size: 13px; color: var(--gray); }
+  .plan-summary-drug { font-size: 16px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .plan-summary-price { font-size: 20px; font-weight: 800; color: var(--teal); }
+
+  /* Quiz step containers */
+  .quiz-step { display: none; }
+  .quiz-step.active { display: block; }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .hero h1 { font-size: 24px; }
+    .stat-value { font-size: 24px; }
+    .pricing-amount { font-size: 40px; }
+    .treatments-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-content">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-menu">☰</div>
+    <div class="header-logo">TIDEMEDIX</div>
+    <div class="header-cart">🛒</div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-stats">
+      <div class="hero-stats-header">
+        <span>💪</span>
+        <div>
+          <div class="hero-stats-title">Real Patient Results</div>
+          <div class="hero-stats-sub">Prescribed by US-licensed physicians</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value">15–20%</div>
+          <div class="stat-label">avg. body weight lost*</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">72%</div>
+          <div class="stat-label">of patients reach goal*</div>
+        </div>
+      </div>
+      <div class="stat-disclaimer">*Based on clinical trial data. Individual results vary.</div>
+    </div>
+
+    <h1>Prescription Weight Loss, <span>Delivered</span></h1>
+    <p class="hero-sub">Physician-prescribed weight management, delivered</p>
+
+    <button class="cta-btn" id="hero-cta" onclick="startQuiz()">
+      See If You Qualify
+      <span class="cta-sub">Takes 2 minutes</span>
+    </button>
+  </div>
+
+  <!-- TRUST BAR -->
+  <div class="trust-bar">
+    <div class="trust-item">💊 FDA-approved active ingredients</div>
+    <div class="trust-item">🚚 Free 2-day shipping</div>
+    <div class="trust-item">👨‍⚕️ US-licensed doctors</div>
+    <div class="trust-item">🔒 HIPAA secure</div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="section">
+    <div class="section-title">How It Works</div>
+    <div class="step-item">
+      <div class="step-icon">📱</div>
+      <div>
+        <div class="step-label">Step 1</div>
+        <div class="step-name">2-Minute Quiz</div>
+        <div class="step-desc">Answer health questions from your phone</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-icon">👨‍⚕️</div>
+      <div>
+        <div class="step-label">Step 2</div>
+        <div class="step-name">Doctor Review</div>
+        <div class="step-desc">Licensed physician reviews same day</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-icon">📦</div>
+      <div>
+        <div class="step-label">Step 3</div>
+        <div class="step-name">Meds Delivered</div>
+        <div class="step-desc">Discreet box arrives in 2–3 days</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TREATMENTS -->
+  <div class="treatments-section">
+    <div class="section-title">Our Treatments</div>
+    <div class="treatments-grid">
+      <div class="treatment-card" onclick="startQuiz()">
+        <div class="treatment-badge">MOST POPULAR</div>
+        <div class="treatment-icon">💉</div>
+        <div class="treatment-name">Tirzepatide</div>
+        <div class="treatment-price">$249/mo</div>
+        <div class="treatment-retail">Retail: $1,200</div>
+      </div>
+      <div class="treatment-card" onclick="startQuiz()">
+        <div class="treatment-badge">BEST VALUE</div>
+        <div class="treatment-icon">💊</div>
+        <div class="treatment-name">Semaglutide</div>
+        <div class="treatment-price">$149/mo</div>
+        <div class="treatment-retail">Retail: $900</div>
+      </div>
+      <div class="treatment-card" onclick="startQuiz()">
+        <div class="treatment-icon">💪</div>
+        <div class="treatment-name">Erectile Dysfunction</div>
+        <div class="treatment-price">$60/mo</div>
+      </div>
+      <div class="treatment-card" onclick="startQuiz()">
+        <div class="treatment-icon">💆</div>
+        <div class="treatment-name">Hair Loss</div>
+        <div class="treatment-price">$30/mo</div>
+      </div>
+    </div>
+
+    <!-- Pricing Highlight -->
+    <div class="pricing-card">
+      <div class="pricing-drug">Semaglutide</div>
+      <div class="pricing-retail">Retail pharmacy: $900/month</div>
+      <div class="pricing-amount">$149<span>/month</span></div>
+      <div class="pricing-note">Same active ingredients, fraction of the cost</div>
+      <ul class="pricing-features">
+        <li>Medication included</li>
+        <li>Free doctor consultation</li>
+        <li>Free 2-day shipping</li>
+        <li>Cancel anytime</li>
+      </ul>
+      <button class="cta-btn" onclick="startQuiz()">Get Started</button>
+    </div>
+  </div>
+
+  <!-- PATIENT STORIES -->
+  <div class="stories-section">
+    <div class="section-title">Patient Stories</div>
+    <div class="story-card">
+      <div class="story-header">
+        <div style="display:flex;align-items:center">
+          <div class="story-avatar">S</div>
+          <div class="story-info">
+            <div class="story-name">Sarah M.</div>
+            <div class="story-label">Significant weight loss</div>
+          </div>
+        </div>
+        <div class="story-stars">★★★★★</div>
+      </div>
+      <div class="story-text">"Finally something that actually works. The process was so easy."</div>
+    </div>
+    <div class="story-card">
+      <div class="story-header">
+        <div style="display:flex;align-items:center">
+          <div class="story-avatar">M</div>
+          <div class="story-info">
+            <div class="story-name">Mike T.</div>
+            <div class="story-label">Life-changing results</div>
+          </div>
+        </div>
+        <div class="story-stars">★★★★★</div>
+      </div>
+      <div class="story-text">"Skeptical at first but the results speak for themselves."</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-logo">TIDEMEDIX</div>
+    <div class="footer-tagline">Prescription wellness, delivered</div>
+    <div class="footer-links">
+      <a href="./terms/privacy.html">Privacy</a>
+      <a href="./terms/terms.html">Terms</a>
+      <a href="#">Contact</a>
+      <a href="#">FAQ</a>
+    </div>
+    <div class="footer-copy">© 2026 Tidemedix. All rights reserved.</div>
+  </div>
+
+</div><!-- end page-content -->
+
+<!-- STICKY BOTTOM CTA -->
+<div class="sticky-cta">
+  <button class="cta-btn" onclick="startQuiz()">See If You Qualify →</button>
+</div>
+
+<!-- ============================================ -->
+<!-- QUIZ OVERLAY -->
+<!-- ============================================ -->
+<div id="quiz-overlay" class="quiz-overlay hidden">
+  <div class="quiz-header">
+    <button class="quiz-close" onclick="closeQuiz()">←</button>
+    <div class="header-logo">TIDEMEDIX</div>
+    <div class="quiz-step-label" id="step-counter">Step 1 of 8</div>
+  </div>
+  <div class="progress-outer">
+    <div class="progress-inner" id="progress-bar"></div>
+  </div>
+
+  <!-- STEP 1: Goal -->
+  <div id="step-1" class="quiz-step active">
+    <div class="quiz-body">
+      <div class="quiz-phase">Health Profile</div>
+      <div class="quiz-question">What brings you here today?</div>
+      <div class="quiz-subtitle">This helps us understand your needs</div>
+      <div class="quiz-option" onclick="selectAndNext(1, 'lose_weight', this)">
+        <span class="quiz-option-icon">⚖️</span>
+        <div><div class="quiz-option-label">I want to lose weight</div><div class="quiz-option-sub">Looking for a medical approach</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(1, 'doctor_rec', this)">
+        <span class="quiz-option-icon">👨‍⚕️</span>
+        <div><div class="quiz-option-label">My doctor recommended GLP-1</div><div class="quiz-option-sub">I have a referral or prior discussion</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(1, 'tried_all', this)">
+        <span class="quiz-option-icon">🔄</span>
+        <div><div class="quiz-option-label">I've tried everything else</div><div class="quiz-option-sub">Diet, exercise, and supplements weren't enough</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(1, 'metabolic', this)">
+        <span class="quiz-option-icon">❤️</span>
+        <div><div class="quiz-option-label">Improve my metabolic health</div><div class="quiz-option-sub">Blood sugar, cholesterol, or related</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Amount -->
+  <div id="step-2" class="quiz-step">
+    <div class="quiz-body">
+      <div class="quiz-phase">Health Profile</div>
+      <div class="quiz-question">How much weight do you want to lose?</div>
+      <div class="quiz-subtitle">GLP-1 medications are typically for patients with significant goals</div>
+      <div class="quiz-option" onclick="selectAndNext(2, '15-30', this)">
+        <span class="quiz-option-icon">📉</span>
+        <div><div class="quiz-option-label">15–30 lbs</div><div class="quiz-option-sub">Moderate weight loss</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(2, '30-50', this)">
+        <span class="quiz-option-icon">📊</span>
+        <div><div class="quiz-option-label">30–50 lbs</div><div class="quiz-option-sub">Significant weight loss</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(2, '50-75', this)">
+        <span class="quiz-option-icon">💪</span>
+        <div><div class="quiz-option-label">50–75 lbs</div><div class="quiz-option-sub">Substantial — life-changing</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(2, '75+', this)">
+        <span class="quiz-option-icon">🎯</span>
+        <div><div class="quiz-option-label">75+ lbs</div><div class="quiz-option-sub">Major commitment</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Biometrics -->
+  <div id="step-3" class="quiz-step">
+    <div class="quiz-body">
+      <div class="quiz-phase">Health Profile</div>
+      <div class="quiz-question">Tell us about yourself</div>
+      <div class="quiz-subtitle">Your physician uses this to evaluate eligibility</div>
+      <div class="quiz-row">
+        <div class="quiz-input-group" style="flex:1">
+          <label class="quiz-label">Age</label>
+          <input class="quiz-input" type="number" id="q-age" placeholder="e.g. 35">
+        </div>
+        <div class="quiz-input-group" style="flex:1">
+          <label class="quiz-label">Biological Sex</label>
+          <div class="quiz-row">
+            <button class="sex-btn" id="sex-m" onclick="selectSex('Male')">Male</button>
+            <button class="sex-btn" id="sex-f" onclick="selectSex('Female')">Female</button>
+          </div>
+        </div>
+      </div>
+      <div class="quiz-input-group">
+        <label class="quiz-label">Current Weight (lbs)</label>
+        <input class="quiz-input" type="number" id="q-weight" placeholder="e.g. 210" oninput="updateBmi()">
+      </div>
+      <div class="quiz-input-group">
+        <label class="quiz-label">Height</label>
+        <div class="quiz-row">
+          <select class="quiz-input" id="q-feet" onchange="updateBmi()">
+            <option value="4">4 ft</option><option value="5" selected>5 ft</option><option value="6">6 ft</option><option value="7">7 ft</option>
+          </select>
+          <select class="quiz-input" id="q-inches" onchange="updateBmi()">
+            <option value="0">0 in</option><option value="1">1 in</option><option value="2">2 in</option><option value="3">3 in</option><option value="4">4 in</option><option value="5">5 in</option><option value="6" selected>6 in</option><option value="7">7 in</option><option value="8">8 in</option><option value="9">9 in</option><option value="10">10 in</option><option value="11">11 in</option>
+          </select>
+        </div>
+      </div>
+      <div class="bmi-display" id="bmi-display" style="display:none">
+        <span class="bmi-label">Calculated BMI</span>
+        <span class="bmi-value" id="bmi-value"></span>
+      </div>
+      <div class="hipaa-badge">🔒 Your health information is encrypted and HIPAA-protected</div>
+      <button class="quiz-btn" id="bio-btn" onclick="goToStep(4)" disabled>Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Conditions A (4 items) -->
+  <div id="step-4" class="quiz-step">
+    <div class="quiz-body">
+      <div class="quiz-phase">Medical Screening</div>
+      <div class="quiz-question">Do any of these apply to you?</div>
+      <div class="quiz-subtitle">Select all that apply</div>
+      <div class="quiz-option" onclick="toggleCondA(this, 'pregnant')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">🤰</span><div class="quiz-option-label">Currently or possibly pregnant</div>
+      </div>
+      <div class="quiz-option" onclick="toggleCondA(this, 'breastfeeding')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">👶</span><div class="quiz-option-label">Currently breastfeeding</div>
+      </div>
+      <div class="quiz-option" onclick="toggleCondA(this, 'type1')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">🩸</span><div class="quiz-option-label">Type 1 Diabetes</div>
+      </div>
+      <div class="quiz-option" onclick="selectNoneA(this)">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">✅</span><div class="quiz-option-label">None of the above</div>
+      </div>
+      <button class="quiz-btn" id="condA-btn" onclick="goToStep(5)" disabled>Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: Conditions B (4 items) -->
+  <div id="step-5" class="quiz-step">
+    <div class="quiz-body">
+      <div class="quiz-phase">Medical Screening</div>
+      <div class="quiz-question">Do any of these apply?</div>
+      <div class="quiz-subtitle">Select all that apply</div>
+      <div class="quiz-option" onclick="toggleCondB(this, 'thyroid')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">⚠️</span><div class="quiz-option-label">Medullary Thyroid Cancer</div>
+      </div>
+      <div class="quiz-option" onclick="toggleCondB(this, 'pancreatitis')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">⚠️</span><div class="quiz-option-label">Pancreatitis History</div>
+      </div>
+      <div class="quiz-option" onclick="toggleCondB(this, 'eating')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">⚠️</span><div class="quiz-option-label">Current or prior eating disorder</div>
+      </div>
+      <div class="quiz-option" onclick="selectNoneB(this)">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">✅</span><div class="quiz-option-label">None of the above</div>
+      </div>
+      <button class="quiz-btn" id="condB-btn" onclick="goToStep(6)" disabled>Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: Conditions C (4 items) -->
+  <div id="step-6" class="quiz-step">
+    <div class="quiz-body">
+      <div class="quiz-phase">Medical Screening</div>
+      <div class="quiz-question">Last safety check</div>
+      <div class="quiz-subtitle">Almost done with screening</div>
+      <div class="quiz-option" onclick="toggleCondC(this, 'cancer')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">⚠️</span><div class="quiz-option-label">Cancer (current or history)</div>
+      </div>
+      <div class="quiz-option" onclick="toggleCondC(this, 'transplant')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">⚠️</span><div class="quiz-option-label">Organ transplant</div>
+      </div>
+      <div class="quiz-option" onclick="toggleCondC(this, 'kidney')">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">⚠️</span><div class="quiz-option-label">End-stage kidney disease</div>
+      </div>
+      <div class="quiz-option" onclick="selectNoneC(this)">
+        <div class="quiz-checkbox"></div><span class="quiz-option-icon">✅</span><div class="quiz-option-label">None of the above</div>
+      </div>
+      <button class="quiz-btn" id="condC-btn" onclick="goToStep(7)" disabled>Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 7: Prior GLP-1 -->
+  <div id="step-7" class="quiz-step">
+    <div class="quiz-body">
+      <div class="quiz-phase">Treatment</div>
+      <div class="quiz-question">Have you used GLP-1 medications before?</div>
+      <div class="quiz-subtitle">This helps determine the right starting dose</div>
+      <div class="quiz-option" onclick="selectAndNext(7, 'yes', this)">
+        <span class="quiz-option-icon">💉</span>
+        <div><div class="quiz-option-label">Yes — I have experience</div><div class="quiz-option-sub">I've used semaglutide or tirzepatide before</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(7, 'stopped', this)">
+        <span class="quiz-option-icon">⏸️</span>
+        <div><div class="quiz-option-label">Yes — but stopped due to side effects</div><div class="quiz-option-sub">I'd like to try again with guidance</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(7, 'no', this)">
+        <span class="quiz-option-icon">🆕</span>
+        <div><div class="quiz-option-label">No — this is my first time</div><div class="quiz-option-sub">I'm new to prescription weight management</div></div>
+      </div>
+      <div class="quiz-option" onclick="selectAndNext(7, 'unsure', this)">
+        <span class="quiz-option-icon">❓</span>
+        <div><div class="quiz-option-label">I'm not sure</div><div class="quiz-option-sub">I'd like guidance from a physician</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYZING -->
+  <div id="step-analyzing" class="quiz-step">
+    <div class="quiz-body analyzing-screen">
+      <div class="spinner"></div>
+      <div class="quiz-question" style="margin-bottom:28px">Evaluating your eligibility</div>
+      <div class="analyze-item pending" id="a1"><span>○</span> Reviewing health profile…</div>
+      <div class="analyze-item pending" id="a2"><span>○</span> Checking medical eligibility…</div>
+      <div class="analyze-item pending" id="a3"><span>○</span> Evaluating treatment options…</div>
+      <div class="analyze-item pending" id="a4"><span>○</span> Preparing your personalized plan…</div>
+    </div>
+  </div>
+
+  <!-- STEP 8: Choose Plan -->
+  <div id="step-8" class="quiz-step">
+    <div class="quiz-body">
+      <div class="eligible-banner">
+        <div class="eligible-emoji">🎉</div>
+        <div class="eligible-title">Great news — you're eligible!</div>
+        <div class="eligible-sub">Choose your treatment to get started.</div>
+      </div>
+
+      <div class="quiz-phase">Choose Your Treatment</div>
+      <div class="quiz-subtitle">Select the plan that's right for you.</div>
+
+      <div class="plan-card" id="plan-sema" onclick="selectPlan('semaglutide')">
+        <div class="plan-badge green">BEST VALUE</div>
+        <div class="plan-top">
+          <div>
+            <div class="plan-name">Semaglutide</div>
+            <div class="plan-type">GLP-1 receptor agonist • Once weekly</div>
+          </div>
+          <div style="text-align:right">
+            <div><span class="plan-price">$149</span><span class="plan-price-unit">/mo</span></div>
+            <div class="plan-retail">$900 retail</div>
+          </div>
+        </div>
+        <div class="plan-tags">
+          <div class="plan-tag teal">✓ Medication included</div>
+          <div class="plan-tag teal">✓ Free doctor consult</div>
+          <div class="plan-tag teal">✓ Free 2-day shipping</div>
+          <div class="plan-tag teal">✓ Cancel anytime</div>
+        </div>
+      </div>
+
+      <div class="plan-card" id="plan-tirz" onclick="selectPlan('tirzepatide')">
+        <div class="plan-badge cyan">MOST POPULAR</div>
+        <div class="plan-top">
+          <div>
+            <div class="plan-name">Tirzepatide</div>
+            <div class="plan-type">Dual GIP/GLP-1 • Once weekly</div>
+          </div>
+          <div style="text-align:right">
+            <div><span class="plan-price">$249</span><span class="plan-price-unit">/mo</span></div>
+            <div class="plan-retail">$1,200 retail</div>
+          </div>
+        </div>
+        <div class="plan-tags">
+          <div class="plan-tag cyan">✓ Medication included</div>
+          <div class="plan-tag cyan">✓ Free doctor consult</div>
+          <div class="plan-tag cyan">✓ Free 2-day shipping</div>
+          <div class="plan-tag cyan">✓ Cancel anytime</div>
+        </div>
+      </div>
+
+      <div class="hipaa-badge">🔒 A licensed physician reviews your info before any prescription is issued</div>
+    </div>
+  </div>
+
+  <!-- STEP 9: Contact Info -->
+  <div id="step-9" class="quiz-step">
+    <div class="quiz-body">
+      <div class="plan-summary" id="contact-summary">
+        <div>
+          <div class="plan-summary-name">Your selected plan</div>
+          <div class="plan-summary-drug" id="summary-drug"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="plan-summary-price" id="summary-price"></div>
+        </div>
+      </div>
+
+      <div class="quiz-phase">Complete Order</div>
+      <div class="quiz-question">Last step — your details</div>
+      <div class="quiz-subtitle">This information is sent directly to your physician and pharmacy to finalize your order.</div>
+
+      <div class="quiz-row">
+        <div class="quiz-input-group" style="flex:1">
+          <label class="quiz-label">First Name</label>
+          <input class="quiz-input" id="q-first" placeholder="First name" oninput="checkContact()">
+        </div>
+        <div class="quiz-input-group" style="flex:1">
+          <label class="quiz-label">Last Name</label>
+          <input class="quiz-input" id="q-last" placeholder="Last name" oninput="checkContact()">
+        </div>
+      </div>
+      <div class="quiz-input-group">
+        <label class="quiz-label">Email</label>
+        <input class="quiz-input" id="q-email" type="email" placeholder="you@email.com" oninput="checkContact()">
+      </div>
+      <div class="quiz-input-group">
+        <label class="quiz-label">Phone</label>
+        <input class="quiz-input" id="q-phone" type="tel" placeholder="(555) 123-4567" oninput="checkContact()">
+      </div>
+      <div class="quiz-input-group">
+        <label class="quiz-label">State</label>
+        <select class="quiz-input" id="q-state" onchange="checkContact()">
+          <option value="">Select your state</option>
+        </select>
+      </div>
+      <div class="hipaa-badge">🔒 Your information is encrypted and HIPAA-protected</div>
+      <button class="quiz-btn" id="contact-btn" onclick="goToCheckout()" disabled>Complete Order — Go to Checkout →</button>
+    </div>
+  </div>
+
+</div><!-- end quiz-overlay -->
+
+<script>
+  // ── STATE ──
+  let answers = {};
+  let selectedPlan = '';
+  let selectedSex = '';
+  const totalSteps = 9;
+
+  // Get URL params for passthrough
+  const pageParams = new URLSearchParams(window.location.search);
+  const clickid = pageParams.get('clickid') || '';
+  const affId = pageParams.get('affId') || '';
+
+  // Populate state dropdown
+  const states = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming","DC":"Washington DC"};
+  const sel = document.getElementById('q-state');
+  Object.entries(states).forEach(([k,v]) => { const o = document.createElement('option'); o.value = k; o.textContent = v; sel.appendChild(o); });
+
+  // ── QUIZ CONTROL ──
+  function startQuiz() {
+    document.getElementById('quiz-overlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    goToStep(1);
+  }
+
+  function closeQuiz() {
+    document.getElementById('quiz-overlay').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+  }
+
+  function goToStep(n) {
+    document.querySelectorAll('.quiz-step').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById('step-' + n);
+    if (target) target.classList.add('active');
+    updateProgress(n);
+    document.getElementById('quiz-overlay').scrollTop = 0;
+  }
+
+  function updateProgress(n) {
+    const pct = (n / totalSteps) * 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('step-counter').textContent = 'Step ' + n + ' of ' + totalSteps;
+  }
+
+  function selectAndNext(step, value, el) {
+    answers['step' + step] = value;
+    const siblings = el.parentElement.querySelectorAll('.quiz-option');
+    siblings.forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+
+    if (step === 7) {
+      // After prior GLP-1, go to analyzing
+      setTimeout(() => startAnalyzing(), 300);
+    } else {
+      setTimeout(() => goToStep(step + 1), 300);
+    }
+  }
+
+  // ── BIOMETRICS ──
+  function selectSex(sex) {
+    selectedSex = sex;
+    document.getElementById('sex-m').classList.toggle('selected', sex === 'Male');
+    document.getElementById('sex-f').classList.toggle('selected', sex === 'Female');
+    checkBio();
+  }
+
+  function updateBmi() {
+    const w = parseFloat(document.getElementById('q-weight').value);
+    const ft = parseFloat(document.getElementById('q-feet').value);
+    const inc = parseFloat(document.getElementById('q-inches').value);
+    const h = ft * 12 + inc;
+    if (w && h) {
+      const bmi = (w / (h * h)) * 703;
+      document.getElementById('bmi-display').style.display = 'flex';
+      const val = document.getElementById('bmi-value');
+      val.textContent = bmi.toFixed(1);
+      val.style.color = bmi >= 27 ? '#10b981' : '#f59e0b';
+    }
+    checkBio();
+  }
+
+  function checkBio() {
+    const age = document.getElementById('q-age').value;
+    const weight = document.getElementById('q-weight').value;
+    document.getElementById('bio-btn').disabled = !(age && weight && selectedSex);
+  }
+
+  // ── CONDITIONS (4 groups: A, B, C, D) ──
+  let condA = new Set(), condB = new Set(), condC = new Set();
+
+  function makeToggle(set, btnId) {
+    return function(el, key) {
+      const noneEl = el.parentElement.querySelector('.quiz-option:last-of-type');
+      if (noneEl && noneEl !== el) { noneEl.classList.remove('selected'); set.delete('none'); }
+      el.classList.toggle('selected');
+      if (el.classList.contains('selected')) set.add(key); else set.delete(key);
+      document.getElementById(btnId).disabled = set.size === 0;
+    };
+  }
+
+  function makeSelectNone(set, btnId) {
+    return function(el) {
+      const siblings = el.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+      set.clear(); set.add('none');
+      document.getElementById(btnId).disabled = false;
+    };
+  }
+
+  const toggleCondA = makeToggle(condA, 'condA-btn');
+  const selectNoneA = makeSelectNone(condA, 'condA-btn');
+  const toggleCondB = makeToggle(condB, 'condB-btn');
+  const selectNoneB = makeSelectNone(condB, 'condB-btn');
+  const toggleCondC = makeToggle(condC, 'condC-btn');
+  const selectNoneC = makeSelectNone(condC, 'condC-btn');
+
+  // ── ANALYZING ──
+  function startAnalyzing() {
+    document.querySelectorAll('.quiz-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step-analyzing').classList.add('active');
+    updateProgress(6);
+
+    const items = [document.getElementById('a1'), document.getElementById('a2'), document.getElementById('a3'), document.getElementById('a4')];
+    items.forEach(i => { i.className = 'analyze-item pending'; i.querySelector('span').textContent = '○'; });
+
+    let idx = 0;
+    const t = setInterval(() => {
+      if (idx > 0) { items[idx-1].className = 'analyze-item done'; items[idx-1].querySelector('span').textContent = '✅'; }
+      if (idx < items.length) { items[idx].className = 'analyze-item active'; items[idx].querySelector('span').textContent = '⏳'; }
+      idx++;
+      if (idx > items.length) {
+        clearInterval(t);
+        setTimeout(() => goToStep(8), 600);
+      }
+    }, 1000);
+  }
+
+  // ── PLAN SELECTION ──
+  function selectPlan(plan) {
+    selectedPlan = plan;
+    document.getElementById('plan-sema').classList.toggle('selected', plan === 'semaglutide');
+    document.getElementById('plan-tirz').classList.toggle('selected', plan === 'tirzepatide');
+
+    // Update contact summary
+    document.getElementById('summary-drug').textContent = plan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide';
+    document.getElementById('summary-price').textContent = plan === 'tirzepatide' ? '$249/mo' : '$149/mo';
+
+    // Auto-advance to contact step
+    setTimeout(() => goToStep(9), 350);
+  }
+
+  // ── CONTACT ──
+  function checkContact() {
+    const f = document.getElementById('q-first').value;
+    const l = document.getElementById('q-last').value;
+    const e = document.getElementById('q-email').value;
+    const p = document.getElementById('q-phone').value;
+    const s = document.getElementById('q-state').value;
+    document.getElementById('contact-btn').disabled = !(f && l && e && p && s);
+  }
+
+  // ── CHECKOUT REDIRECT ──
+  function goToCheckout() {
+    const params = new URLSearchParams();
+    params.set('product', selectedPlan);
+    params.set('shippingState', document.getElementById('q-state').value);
+    params.set('firstName', document.getElementById('q-first').value);
+    params.set('lastName', document.getElementById('q-last').value);
+    params.set('email', document.getElementById('q-email').value);
+    params.set('phone', document.getElementById('q-phone').value);
+    params.set('height_feet', document.getElementById('q-feet').value);
+    params.set('height_inches', document.getElementById('q-inches').value);
+    params.set('weight', document.getElementById('q-weight').value);
+    params.set('prescription_needed', 'yes');
+
+    // Map conditions from 3 groups
+    const allNone = condA.has('none') && condB.has('none') && condC.has('none');
+    params.set('option1_none_of_the_below', allNone ? 'yes' : 'no');
+    params.set('option1_currently_or_possibly_pregnant_or_actively_trying_to_become_pregnant', condA.has('pregnant') ? 'yes' : 'no');
+    params.set('option1_breastfeeding_or_bottle_feeding_with_breastmilk', condA.has('breastfeeding') ? 'yes' : 'no');
+    params.set('option1_type_1_diabetes', condA.has('type1') ? 'yes' : 'no');
+    params.set('option1_type_2_diabetes_or_insulin', 'no');
+    params.set('option1_current_or_prior_eating_disorder', condB.has('eating') ? 'yes' : 'no');
+    params.set('option1_end_state_kidney_disease', condC.has('kidney') ? 'yes' : 'no');
+    params.set('option1_cancer', condC.has('cancer') ? 'yes' : 'no');
+    params.set('option1_organ_transplant', condC.has('transplant') ? 'yes' : 'no');
+    params.set('option1_severe_gastrointestinal_condition', condB.has('pancreatitis') ? 'yes' : 'no');
+    params.set('option1_current_suicidal_thoughts', condB.has('thyroid') ? 'yes' : 'no');
+    params.set('option1_none_of_the_above', 'no');
+    params.set('blazntrak_transaction_id', '');
+    params.set('affId', affId);
+    params.set('clickid', clickid);
+
+    window.location.href = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
+  }
+
+  // Init: listen for input changes on biometrics
+  document.getElementById('q-age').addEventListener('input', checkBio);
+  document.getElementById('q-weight').addEventListener('input', checkBio);
+
+  // Show sticky CTA only after hero CTA scrolls out of view
+  const heroCta = document.getElementById('hero-cta');
+  const stickyCta = document.querySelector('.sticky-cta');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        stickyCta.classList.remove('visible');
+      } else {
+        stickyCta.classList.add('visible');
+      }
+    });
+  }, { threshold: 0 });
+  observer.observe(heroCta);
+</script>
+
+</body>
+</html>
