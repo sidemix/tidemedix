@@ -4,6 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tidemedix - Prescription Weight Loss, Delivered</title>
+
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '4434392796791009');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=4434392796791009&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -595,6 +613,14 @@
   <div class="footer">
     <div class="footer-logo">TIDEMEDIX</div>
     <div class="footer-tagline">Prescription wellness, delivered</div>
+    <div style="margin: 16px 0;">
+      <a href="https://www.legitscript.com/websites/?checker_keywords=tidemedix.com" target="_blank" rel="noopener" style="text-decoration:none;">
+        <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:rgba(16,120,60,0.15); border:1px solid rgba(16,120,60,0.3); border-radius:8px;">
+          <span style="font-size:16px;">✅</span>
+          <span style="font-size:12px; font-weight:600; color:#10b981;">LegitScript Certified</span>
+        </div>
+      </a>
+    </div>
     <div class="footer-links">
       <a href="./terms/privacy.html">Privacy</a>
       <a href="./terms/terms.html">Terms</a>
@@ -918,6 +944,13 @@
         </select>
       </div>
       <div class="hipaa-badge">🔒 Your information is encrypted and HIPAA-protected</div>
+      <a href="https://www.legitscript.com/websites/?checker_keywords=tidemedix.com" target="_blank" rel="noopener" style="text-decoration:none;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; padding:10px; background:rgba(16,120,60,0.12); border:1px solid rgba(16,120,60,0.25); border-radius:10px;">
+          <span style="font-size:16px;">✅</span>
+          <span style="font-size:12px; font-weight:600; color:#10b981;">LegitScript Certified</span>
+          <span style="font-size:10px; color:#64748b;">— Verified Pharmacy</span>
+        </div>
+      </a>
       <button class="quiz-btn" id="contact-btn" onclick="goToCheckout()" disabled>Complete Order — Go to Checkout →</button>
     </div>
   </div>
@@ -946,6 +979,8 @@
     document.getElementById('quiz-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     goToStep(1);
+    // Fire ViewContent when user starts the quiz
+    fbq('track', 'ViewContent', { content_name: 'Quiz Started' });
   }
 
   function closeQuiz() {
@@ -1116,6 +1151,25 @@
     params.set('blazntrak_transaction_id', '');
     params.set('affId', affId);
     params.set('clickid', clickid);
+
+    // Fire Meta Pixel events
+    const userEmail = document.getElementById('q-email').value;
+    const userPhone = document.getElementById('q-phone').value;
+    const userName = document.getElementById('q-first').value + ' ' + document.getElementById('q-last').value;
+
+    // CompleteRegistration — user submitted their contact info
+    fbq('track', 'CompleteRegistration', {
+      content_name: selectedPlan,
+      currency: 'USD',
+      value: selectedPlan === 'tirzepatide' ? 249.00 : 149.00
+    });
+
+    // InitiateCheckout — user is heading to payment
+    fbq('track', 'InitiateCheckout', {
+      content_name: selectedPlan,
+      currency: 'USD',
+      value: selectedPlan === 'tirzepatide' ? 249.00 : 149.00
+    });
 
     window.location.href = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
   }
