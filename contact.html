@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us - Tidemedix</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #111827; color: #e2e8f0; line-height: 1.7; }
+  .header { background: linear-gradient(135deg, #0d9488, #06b6d4); padding: 14px 20px; display: flex; align-items: center; justify-content: center; }
+  .header a { text-decoration: none; }
+  .header-logo { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 2px; }
+  .container { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
+  h2 { font-size: 18px; font-weight: 700; color: #fff; margin: 28px 0 12px; }
+  p { font-size: 14px; color: #94a3b8; margin-bottom: 14px; }
+  a { color: #0d9488; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #0d9488; text-decoration: none; margin-bottom: 24px; }
+  .back-link:hover { text-decoration: underline; }
+  .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 24px; margin-bottom: 16px; }
+  .card-icon { font-size: 24px; margin-bottom: 10px; }
+  .card-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .card-text { font-size: 14px; color: #94a3b8; }
+  .card-text a { color: #0d9488; text-decoration: none; font-weight: 600; }
+  .card-text a:hover { text-decoration: underline; }
+  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+  .input-group { margin-bottom: 16px; }
+  .input-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+  .input { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.12); border-radius: 12px; font-size: 16px; color: #fff; outline: none; font-family: inherit; }
+  .input::placeholder { color: #4a5568; }
+  .input:focus { border-color: rgba(13,148,136,0.4); }
+  textarea.input { min-height: 120px; resize: vertical; }
+  .btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #0d9488, #0e7490); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; letter-spacing: 0.3px; }
+  .btn:active { transform: scale(0.98); }
+  .row { display: flex; gap: 12px; }
+  .hipaa { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: rgba(13,148,136,0.08); border: 1px solid rgba(13,148,136,0.15); border-radius: 10px; margin-top: 14px; font-size: 12px; color: #0d9488; font-weight: 500; }
+  .footer { background: #0a0e17; padding: 32px 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.06); }
+  .footer-logo { font-size: 18px; font-weight: 800; color: #0d9488; letter-spacing: 2px; margin-bottom: 6px; }
+  .footer-tagline { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+  .footer-links { display: flex; gap: 20px; justify-content: center; margin-bottom: 16px; }
+  .footer-links a { font-size: 13px; color: #64748b; text-decoration: none; }
+  .footer-links a:hover { color: #0d9488; }
+  .footer-copy { font-size: 11px; color: #64748b; }
+  @media (max-width: 500px) { .contact-grid { grid-template-columns: 1fr; } .row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="header"><a href="./"><span class="header-logo">TIDEMEDIX</span></a></div>
+<div class="container">
+<a href="./" class="back-link">← Back to Home</a>
+
+<h1>Contact Us</h1>
+<p class="subtitle">We're here to help. Reach out anytime.</p>
+
+<div class="contact-grid">
+  <div class="card">
+    <div class="card-icon">📧</div>
+    <div class="card-title">Email</div>
+    <div class="card-text"><a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a></div>
+  </div>
+  <div class="card">
+    <div class="card-icon">📞</div>
+    <div class="card-title">Phone</div>
+    <div class="card-text"><a href="tel:+18333655589">+1 (833) 365-5589</a></div>
+  </div>
+  <div class="card">
+    <div class="card-icon">📍</div>
+    <div class="card-title">Address</div>
+    <div class="card-text">5255 Office Park Blvd<br>Suite 107<br>Bradenton, FL 34203</div>
+  </div>
+  <div class="card">
+    <div class="card-icon">🕐</div>
+    <div class="card-title">Hours</div>
+    <div class="card-text">Mon – Fri: 9am – 6pm EST<br>Sat – Sun: Closed</div>
+  </div>
+</div>
+
+<h2>Send Us a Message</h2>
+<p>Have a question about our services, your order, or your treatment plan? Fill out the form below and we'll get back to you within 24 hours.</p>
+
+<div class="row">
+  <div class="input-group" style="flex:1">
+    <label class="input-label">First Name</label>
+    <input class="input" placeholder="First name" id="c-first">
+  </div>
+  <div class="input-group" style="flex:1">
+    <label class="input-label">Last Name</label>
+    <input class="input" placeholder="Last name" id="c-last">
+  </div>
+</div>
+<div class="input-group">
+  <label class="input-label">Email</label>
+  <input class="input" type="email" placeholder="you@email.com" id="c-email">
+</div>
+<div class="input-group">
+  <label class="input-label">Subject</label>
+  <input class="input" placeholder="How can we help?" id="c-subject">
+</div>
+<div class="input-group">
+  <label class="input-label">Message</label>
+  <textarea class="input" placeholder="Tell us more..." id="c-message"></textarea>
+</div>
+<button class="btn" onclick="submitContact()">Send Message</button>
+<div class="hipaa">🔒 Your information is encrypted and HIPAA-protected</div>
+
+<div id="success-msg" style="display:none; margin-top:20px; padding:16px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); border-radius:12px; text-align:center;">
+  <div style="font-size:24px; margin-bottom:8px;">✅</div>
+  <div style="font-size:16px; font-weight:700; color:#fff; margin-bottom:4px;">Message sent!</div>
+  <div style="font-size:13px; color:#94a3b8;">We'll get back to you within 24 hours.</div>
+</div>
+
+</div>
+<div class="footer">
+  <div class="footer-logo">TIDEMEDIX</div>
+  <div class="footer-tagline">Prescription wellness, delivered</div>
+  <div class="footer-links">
+    <a href="./privacy.html">Privacy</a>
+    <a href="./terms.html">Terms</a>
+    <a href="./contact.html">Contact</a>
+    <a href="./faq.html">FAQ</a>
+  </div>
+  <div class="footer-copy">© 2026 Tidemedix. All rights reserved.</div>
+</div>
+<script>
+function submitContact() {
+  const f = document.getElementById('c-first').value;
+  const l = document.getElementById('c-last').value;
+  const e = document.getElementById('c-email').value;
+  if (f && l && e) {
+    document.getElementById('success-msg').style.display = 'block';
+    document.querySelector('.btn').style.display = 'none';
+    // TODO: Wire up to Resend or email endpoint
+  }
+}
+</script>
+</body>
+</html>
