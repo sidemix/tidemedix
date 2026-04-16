@@ -980,6 +980,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const clickid = pageParams.get('clickid') || '';
   const affId = pageParams.get('affId') || '';
 
+  // ── UTM CAPTURE ──
+  // Capture UTM params + fbclid on landing and persist to localStorage
+  (function() {
+    var utmKeys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid'];
+    utmKeys.forEach(function(key) {
+      var val = pageParams.get(key);
+      if (val) localStorage.setItem(key, val);
+    });
+  })();
+
+  function getStoredUtms() {
+    return {
+      utm_source:   localStorage.getItem('utm_source')   || '',
+      utm_medium:   localStorage.getItem('utm_medium')   || '',
+      utm_campaign: localStorage.getItem('utm_campaign') || '',
+      utm_content:  localStorage.getItem('utm_content')  || '',
+      utm_term:     localStorage.getItem('utm_term')     || '',
+      fbclid:       localStorage.getItem('fbclid')       || ''
+    };
+  }
+
   // Populate state dropdown
   const states = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming","DC":"Washington DC"};
   const sel = document.getElementById('q-state');
@@ -992,6 +1013,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     goToStep(1);
     // Fire ViewContent when user starts the quiz
     fbq('track', 'ViewContent', { content_name: 'Quiz Started' });
+    // dataLayer: quiz_started
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event: 'quiz_started' }, getStoredUtms()));
   }
 
   function closeQuiz() {
@@ -1174,6 +1198,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       currency: 'USD',
       value: selectedPlan === 'tirzepatide' ? 249.00 : 149.00
     });
+    // dataLayer: lead
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({
+      event:      'lead',
+      email:      userEmail,
+      first_name: document.getElementById('q-first').value,
+      tier:       selectedPlan
+    }, getStoredUtms()));
 
     // InitiateCheckout — user is heading to payment
     fbq('track', 'InitiateCheckout', {
@@ -1181,6 +1213,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       currency: 'USD',
       value: selectedPlan === 'tirzepatide' ? 249.00 : 149.00
     });
+    // dataLayer: begin_checkout
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({
+      event:        'begin_checkout',
+      value:        selectedPlan === 'tirzepatide' ? 249 : 149,
+      currency:     'USD',
+      content_name: selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide'
+    }, getStoredUtms()));
 
     window.location.href = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
   }
