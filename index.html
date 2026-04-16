@@ -12,23 +12,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tidemedix - Prescription Weight Loss, Delivered</title>
 
-<!-- Meta Pixel Code -->
-<script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '1282887087139606');
-fbq('track', 'PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=1282887087139606&ev=PageView&noscript=1"
-/></noscript>
-<!-- End Meta Pixel Code -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -1011,8 +994,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     document.getElementById('quiz-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     goToStep(1);
-    // Fire ViewContent when user starts the quiz
-    fbq('track', 'ViewContent', { content_name: 'Quiz Started' });
     // dataLayer: quiz_started
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({ event: 'quiz_started' }, getStoredUtms()));
@@ -1187,17 +1168,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     params.set('affId', affId);
     params.set('clickid', clickid);
 
-    // Fire Meta Pixel events
     const userEmail = document.getElementById('q-email').value;
     const userPhone = document.getElementById('q-phone').value;
     const userName = document.getElementById('q-first').value + ' ' + document.getElementById('q-last').value;
 
-    // CompleteRegistration — user submitted their contact info
-    fbq('track', 'CompleteRegistration', {
-      content_name: selectedPlan,
-      currency: 'USD',
-      value: selectedPlan === 'tirzepatide' ? 249.00 : 149.00
-    });
     // dataLayer: lead
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({
@@ -1207,12 +1181,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       tier:       selectedPlan
     }, getStoredUtms()));
 
-    // InitiateCheckout — user is heading to payment
-    fbq('track', 'InitiateCheckout', {
-      content_name: selectedPlan,
-      currency: 'USD',
-      value: selectedPlan === 'tirzepatide' ? 249.00 : 149.00
-    });
     // dataLayer: begin_checkout
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({
