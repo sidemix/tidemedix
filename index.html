@@ -974,6 +974,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     };
   }
 
+  // Lead capture endpoint. Filled in after the Cloudflare Worker is deployed.
+  const LEAD_CAPTURE_ENDPOINT = 'https://tidemedix-leads.tylerdefi.workers.dev/api/lead';
+
   // Populate state dropdown
   const states = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming","DC":"Washington DC"};
   const sel = document.getElementById('q-state');
@@ -1126,8 +1129,48 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     document.getElementById('contact-btn').disabled = !(f && l && e && p && s);
   }
 
+  async function captureLeadBeforeCheckout(checkoutUrl) {
+    if (!LEAD_CAPTURE_ENDPOINT) return;
+
+    const payload = {
+      email: document.getElementById('q-email').value,
+      firstName: document.getElementById('q-first').value,
+      lastName: document.getElementById('q-last').value,
+      phone: document.getElementById('q-phone').value,
+      state: document.getElementById('q-state').value,
+      plan: selectedPlan,
+      value: selectedPlan === 'tirzepatide' ? 249 : 149,
+      checkoutUrl,
+      attribution: Object.assign({ affId, clickid }, getStoredUtms()),
+      quiz: {
+        step1: answers.step1 || '',
+        weightGoal: answers.step2 || '',
+        age: document.getElementById('q-age').value,
+        sex: selectedSex,
+        weight: document.getElementById('q-weight').value,
+        heightFeet: document.getElementById('q-feet').value,
+        heightInches: document.getElementById('q-inches').value,
+        priorGlp1: answers.step7 || '',
+        conditionsA: Array.from(condA),
+        conditionsB: Array.from(condB),
+        conditionsC: Array.from(condC)
+      }
+    };
+
+    await fetch(LEAD_CAPTURE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true
+    });
+  }
+
   // ── CHECKOUT REDIRECT ──
-  function goToCheckout() {
+  async function goToCheckout() {
+    const contactBtn = document.getElementById('contact-btn');
+    contactBtn.disabled = true;
+    contactBtn.textContent = 'Sending you to checkout…';
+
     const params = new URLSearchParams();
     params.set('product', selectedPlan);
     params.set('shippingState', document.getElementById('q-state').value);
@@ -1180,7 +1223,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       content_name: selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide'
     }, getStoredUtms()));
 
-    window.location.href = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
+    const checkoutUrl = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
+
+    try {
+      await captureLeadBeforeCheckout(checkoutUrl);
+    } catch (err) {
+      console.warn('Lead capture failed; continuing to checkout', err);
+    }
+
+    window.location.href = checkoutUrl;
   }
 
   // Init: listen for input changes on biometrics

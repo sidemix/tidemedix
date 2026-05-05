@@ -1,0 +1,18 @@
+name = "tidemedix-leads"
+main = "src/index.js"
+compatibility_date = "2026-05-04"
+
+# Replace id after running:
+#   npx wrangler kv namespace create TIDEMEDIX_LEADS
+[[kv_namespaces]]
+binding = "TIDEMEDIX_LEADS"
+id = "371b7c9c1a544a819c592ab50aecdd93"
+
+[triggers]
+crons = ["17 * * * *"]
+
+[vars]
+FROM_EMAIL = "TideMedix <care@gotidemedix.com>"
+CHECKOUT_URL = "https://checkout.tidemedix.com/wl_checkout/"
+FUNNEL_URL = "https://go.tidemedix.com/"
+PUBLIC_BASE_URL = "https://tidemedix-leads.tylerdefi.workers.dev"
