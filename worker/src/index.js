@@ -215,7 +215,7 @@ function renderWelcomeEmail(lead, ctaUrl, unsubscribeUrl) {
     <p>You started your TideMedix consultation, but didn't finish. Your answers and treatment selection are saved — you can pick up where you left off.</p>
     <p>The next step is a quick checkout. From there, a US-licensed physician reviews your consultation and decides whether prescription treatment is appropriate for you.</p>
     ${ctaButton(ctaUrl, 'Continue your consultation')}
-    <p style="color:#8ea0b5;font-size:14px">No phone calls. No insurance runaround. If approved, your medication ships free in two days.</p>
+    <p>No phone calls. No insurance runaround. If approved, your medication ships free in two days.</p>
   `, unsubscribeUrl);
 }
 
@@ -248,7 +248,7 @@ function renderDayThreeEmail(lead, ctaUrl, unsubscribeUrl) {
     <p>Nothing has expired. Your saved answers are still there, and the same plan you selected is still in stock at the same price.</p>
     <p>If you'd like to continue, here's where to pick up:</p>
     ${ctaButton(ctaUrl, 'Continue with TideMedix')}
-    <p style="color:#8ea0b5;font-size:14px">If you have a question first, reply to this email — it goes to a real person on our care team.</p>
+    <p>If you have a question first, reply to this email — it goes to a real person on our care team.</p>
   `, unsubscribeUrl);
 }
 
@@ -269,31 +269,25 @@ function renderDayTenEmail(lead, ctaUrl, unsubscribeUrl) {
     <p>If TideMedix isn't the right fit right now, that's reasonable — prescription weight management should feel clear before you move forward, not rushed.</p>
     <p>If you'd still like to finish, the door is open:</p>
     ${ctaButton(ctaUrl, 'Return to TideMedix')}
-    <p style="color:#8ea0b5;font-size:14px">After this, we'll stop emailing about this consultation. Take care.</p>
+    <p>After this, we'll stop emailing about this consultation. Take care.</p>
   `, unsubscribeUrl);
 }
 
 function ctaButton(url, label) {
-  return `<p style="margin:22px 0"><a href="${escapeAttr(url)}" style="display:inline-block;background:#0d9488;color:#ffffff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.2px">${escapeHtml(label)}</a></p>`;
+  return `<p><a href="${escapeAttr(url)}">${escapeHtml(label)}</a></p>`;
 }
 
 function emailShell(body, unsubscribeUrl) {
   return `<!doctype html>
 <html>
-<body style="margin:0;padding:0;background:#07111f;color:#e5eef7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;line-height:1.6">
-  <div style="max-width:580px;margin:0 auto;padding:32px 24px">
-    <div style="margin-bottom:18px">
-      <span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:0.3px">Tide<span style="color:#5eead4">Medix</span></span>
-    </div>
-    <div style="background:#0f1c2e;border:1px solid #1f334a;border-radius:14px;padding:28px 26px">
-      ${body}
-    </div>
-    <p style="font-size:12px;color:#7a8aa0;margin:18px 0 6px;text-align:center">LegitScript Certified · US-Licensed Physicians · Free 2-Day Shipping</p>
-    <p style="font-size:12px;color:#7a8aa0;margin:0;text-align:center">
-      You're receiving this because you started a consultation at TideMedix.<br>
-      <a style="color:#8ddbd3;text-decoration:underline" href="${escapeAttr(unsubscribeUrl)}">Unsubscribe</a>
-    </p>
-  </div>
+<body style="margin:0;padding:20px;background:#ffffff;color:#222222;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.5">
+${body}
+<p>&mdash; TideMedix Care Team</p>
+<p style="font-size:12px;color:#777777;margin-top:32px">
+LegitScript Certified. US-Licensed Physicians.<br>
+You're receiving this because you started a consultation at TideMedix.
+<a href="${escapeAttr(unsubscribeUrl)}" style="color:#777777">Unsubscribe</a>.
+</p>
 </body>
 </html>`;
 }
