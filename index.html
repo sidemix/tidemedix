@@ -989,7 +989,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     goToStep(1);
     // dataLayer: quiz_started
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(Object.assign({ event: 'quiz_started' }, getStoredUtms()));
+    window.dataLayer.push(Object.assign({
+      event: 'view_content',
+      content_name: 'Quiz Started'
+    }, getStoredUtms()));
   }
 
   function closeQuiz() {
@@ -1205,22 +1208,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const userPhone = document.getElementById('q-phone').value;
     const userName = document.getElementById('q-first').value + ' ' + document.getElementById('q-last').value;
 
-    // dataLayer: lead
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(Object.assign({
-      event:      'lead',
-      email:      userEmail,
-      first_name: document.getElementById('q-first').value,
-      tier:       selectedPlan
-    }, getStoredUtms()));
-
-    // dataLayer: begin_checkout
+    // dataLayer: begin_checkout (drives Meta InitiateCheckout via GTM)
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({
       event:        'begin_checkout',
+      email:        userEmail,
+      first_name:   document.getElementById('q-first').value,
       value:        selectedPlan === 'tirzepatide' ? 249 : 149,
       currency:     'USD',
-      content_name: selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide'
+      content_name: selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide',
+      tier:         selectedPlan
     }, getStoredUtms()));
 
     const checkoutUrl = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
