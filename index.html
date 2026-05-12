@@ -740,12 +740,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     return quizSteps.filter(step => !step.show || step.show());
   }
 
-  function startQuiz() {
+  function startQuiz(stepId) {
     document.getElementById('quiz-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     document.body.classList.add('quiz-open');
     visibleFlow = getVisibleSteps();
-    currentIndex = 0;
+    currentIndex = stepId ? Math.max(0, visibleFlow.findIndex(step => step.id === stepId)) : 0;
+    if (currentIndex < 0) currentIndex = 0;
     renderStep();
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({ event:'view_content', content_name:'Quiz Started' }, getStoredUtms()));
@@ -850,8 +851,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     updateContinueState();
   }
 
-  function nextStep() {
+  async function nextStep() {
     visibleFlow = getVisibleSteps();
+    const step = visibleFlow[currentIndex];
+    if (step && step.id === 'email') {
+      try { await captureQuizAbandon(); } catch (err) { console.warn('Quiz abandon capture failed', err); }
+    }
     if (currentIndex < visibleFlow.length - 1) {
       currentIndex += 1;
       renderStep();
@@ -900,9 +905,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     document.getElementById('contact-btn').disabled = !(f && l && e && p && s);
   }
 
+  async function captureQuizAbandon() {
+    if (!LEAD_CAPTURE_ENDPOINT || !answers.email) return;
+    const payload = {
+      leadType: 'quiz_abandon',
+      email: answers.email,
+      state: answers.state || '',
+      attribution: Object.assign({ affId, clickid }, getStoredUtms()),
+      quiz: answers
+    };
+    const res = await fetch(LEAD_CAPTURE_ENDPOINT, { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload), keepalive:true });
+    if (res.ok) {
+      try {
+        const data = await res.json();
+        if (data.id) localStorage.setItem('tidemedix_resume_lead_id', data.id);
+      } catch (e) {}
+    }
+  }
+
   async function captureLeadBeforeCheckout(checkoutUrl) {
     if (!LEAD_CAPTURE_ENDPOINT) return;
     const payload = {
+      leadType: 'checkout_started',
       email: answers.contactEmail || answers.email || '',
       firstName: answers.firstName || '',
       lastName: answers.lastName || '',
@@ -970,6 +994,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     entries.forEach(entry => entry.isIntersecting ? stickyCta.classList.remove('visible') : stickyCta.classList.add('visible'));
   }, { threshold: 0 });
   observer.observe(heroCta);
+
+  async function resumeQuizFromEmail() {
+    if (pageParams.get('resume') !== 'height_weight') return;
+    const leadId = pageParams.get('lead') || localStorage.getItem('tidemedix_resume_lead_id') || '';
+    if (leadId) {
+      try {
+        const res = await fetch(LEAD_CAPTURE_ENDPOINT.replace('/api/lead', '/api/resume') + '?id=' + encodeURIComponent(leadId));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.quiz && typeof data.quiz === 'object') answers = Object.assign({}, data.quiz);
+          if (data.email && !answers.email) answers.email = data.email;
+        }
+      } catch (err) { console.warn('Resume lookup failed', err); }
+    }
+    startQuiz('height_weight');
+  }
+
+  resumeQuizFromEmail();
 
 </script>
 

@@ -10,16 +10,26 @@ const PRODUCT_LINKS = {
   tirzepatide: 'https://tidemedix.com/therapy/tirzepatide/?c3=transactionId&affId=AA0F177B'
 };
 
-// Drip schedule. The "welcome" email at index 0 is sent inline from /api/lead,
-// not by the cron. Remaining steps are sent by the hourly cron based on delayMs
-// from the lead's checkoutStartedAt.
-const EMAIL_STEPS = [
+// Drip schedule for people who finish the quiz/contact step and begin checkout.
+// The "welcome" email at index 0 is sent inline from /api/lead, not by the cron.
+// Remaining steps are sent by the hourly cron based on checkoutStartedAt.
+export const EMAIL_STEPS = [
   { key: 'welcome',       delayMs: 0,                              subject: (n) => `Your consultation is waiting${n ? `, ${n}` : ''}`,         template: renderWelcomeEmail,     ctaTarget: 'checkout' },
   { key: 'followup_2h',   delayMs: 2 * 60 * 60 * 1000,             subject: () => 'Quick question about your consultation',                    template: renderTwoHourEmail,     ctaTarget: 'product'  },
   { key: 'followup_24h',  delayMs: 24 * 60 * 60 * 1000,            subject: () => 'Most people have this question about GLP-1 medications',    template: renderDayOneEmail,      ctaTarget: 'product'  },
   { key: 'followup_72h',  delayMs: 72 * 60 * 60 * 1000,            subject: () => 'Your physician consultation is still available',            template: renderDayThreeEmail,    ctaTarget: 'product'  },
   { key: 'followup_5d',   delayMs: 5 * 24 * 60 * 60 * 1000,        subject: () => "3 things most people don't know about prescription weight management", template: renderDayFiveEmail, ctaTarget: 'product' },
   { key: 'followup_10d',  delayMs: 10 * 24 * 60 * 60 * 1000,       subject: () => 'Last note from TideMedix',                                  template: renderDayTenEmail,      ctaTarget: 'product'  }
+];
+
+// Separate recovery sequence for people who enter email at the gate, then leave
+// before submitting contact/checkout details. These emails only sell quiz
+// completion and always resume at the height/current-weight step.
+export const ABANDON_EMAIL_STEPS = [
+  { key: 'abandon_20m',          delayMs: 20 * 60 * 1000,             subject: () => 'Finish your TideMedix assessment',             template: renderAbandonTwentyMinuteEmail, ctaTarget: 'resume' },
+  { key: 'abandon_next_morning', delayMs: 12 * 60 * 60 * 1000,        subject: () => 'Your assessment is almost ready',              template: renderAbandonNextMorningEmail,  ctaTarget: 'resume' },
+  { key: 'abandon_2d',           delayMs: 2 * 24 * 60 * 60 * 1000,    subject: () => 'Still want to see if you may qualify?',        template: renderAbandonTwoDayEmail,       ctaTarget: 'resume' },
+  { key: 'abandon_5d',           delayMs: 5 * 24 * 60 * 60 * 1000,    subject: () => 'Last reminder to finish your assessment',      template: renderAbandonFiveDayEmail,      ctaTarget: 'resume' }
 ];
 
 export default {
@@ -30,6 +40,7 @@ export default {
     try {
       if (url.pathname === '/api/health') return json(request, { ok: true, service: 'tidemedix-leads' });
       if (url.pathname === '/api/lead' && request.method === 'POST') return handleLead(request, env, ctx);
+      if (url.pathname === '/api/resume' && request.method === 'GET') return handleResume(request, env);
       if (url.pathname === '/api/purchase' && request.method === 'POST') return handlePurchase(request, env);
       if (url.pathname === '/api/purchased' && request.method === 'POST') return handlePurchase(request, env);
       if (url.pathname === '/api/unsubscribe' && request.method === 'GET') return handleUnsubscribe(request, env);
@@ -68,10 +79,11 @@ async function handleLead(request, env, ctx) {
     checkoutUrl: cleanUrl(body.checkoutUrl),
     attribution: body.attribution || existing?.attribution || {},
     quiz: body.quiz || existing?.quiz || {},
-    status: existing?.status === 'purchased' ? 'purchased' : 'checkout_started',
+    status: statusForLeadSubmission(body, existing),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
-    checkoutStartedAt: existing?.checkoutStartedAt || now,
+    checkoutStartedAt: body.leadType === 'quiz_abandon' ? (existing?.checkoutStartedAt || null) : (existing?.checkoutStartedAt || now),
+    abandonedAt: body.leadType === 'quiz_abandon' ? (existing?.abandonedAt || now) : (existing?.abandonedAt || null),
     purchasedAt: existing?.purchasedAt || null,
     unsubscribedAt: existing?.unsubscribedAt || null,
     emails: existing?.emails || {}
@@ -80,12 +92,28 @@ async function handleLead(request, env, ctx) {
   await env.TIDEMEDIX_LEADS.put(`lead:${id}`, JSON.stringify(lead));
   await env.TIDEMEDIX_LEADS.put(`email:${email}`, id);
 
-  // Send immediate welcome email (don't block response). Skip if already sent.
-  if (!lead.emails.welcome && !lead.purchasedAt && !lead.unsubscribedAt) {
+  // Send immediate checkout-started welcome email (don't block response). Skip
+  // quiz abandoners; they get the separate recovery sequence from cron.
+  if (lead.status === 'checkout_started' && !lead.emails.welcome && !lead.purchasedAt && !lead.unsubscribedAt) {
     ctx.waitUntil(sendStepAndRecord(env, lead, EMAIL_STEPS[0]).catch(err => console.error('welcome_send_failed', err)));
   }
 
-  return json(request, { ok: true, id });
+  return json(request, { ok: true, id, resumeUrl: buildResumeUrl(lead, env) });
+}
+
+async function handleResume(request, env) {
+  const id = new URL(request.url).searchParams.get('id') || '';
+  if (!id) return json(request, { ok: false, error: 'id_required' }, 400);
+  const lead = await getLead(env, id);
+  if (!lead || !lead.email) return json(request, { ok: false, error: 'not_found' }, 404);
+  return json(request, {
+    ok: true,
+    id: lead.id,
+    email: lead.email,
+    status: lead.status,
+    quiz: lead.quiz || {},
+    resumeStep: 'height_weight'
+  });
 }
 
 async function handlePurchase(request, env) {
@@ -133,13 +161,18 @@ async function runFollowups(env) {
     cursor = page.cursor;
     for (const key of page.keys) {
       const lead = await getLead(env, key.name.replace(/^lead:/, ''));
-      if (!shouldConsiderLead(lead)) continue;
+      if (!shouldConsiderCheckoutLead(lead) && !shouldConsiderAbandonLead(lead)) continue;
       const checkoutTime = new Date(lead.checkoutStartedAt || lead.createdAt).getTime();
-      // Iterate steps after the welcome (index 0 sent inline).
-      for (let i = 1; i < EMAIL_STEPS.length; i++) {
-        const step = EMAIL_STEPS[i];
+      const abandonTime = new Date(lead.abandonedAt || lead.createdAt).getTime();
+      const steps = shouldConsiderAbandonLead(lead) ? ABANDON_EMAIL_STEPS : EMAIL_STEPS;
+      const startTime = shouldConsiderAbandonLead(lead) ? abandonTime : checkoutTime;
+      // Iterate steps after the checkout welcome (index 0 sent inline). Abandon
+      // sequence has no inline send, so it starts at index 0.
+      const firstStepIndex = shouldConsiderAbandonLead(lead) ? 0 : 1;
+      for (let i = firstStepIndex; i < steps.length; i++) {
+        const step = steps[i];
         if (lead.emails?.[step.key]) continue;
-        if (now - checkoutTime < step.delayMs) continue;
+        if (now - startTime < step.delayMs) continue;
         try {
           await sendStepAndRecord(env, lead, step);
         } catch (err) {
@@ -151,8 +184,17 @@ async function runFollowups(env) {
   } while (cursor);
 }
 
-function shouldConsiderLead(lead) {
-  return lead && lead.email && lead.status !== 'purchased' && !lead.purchasedAt && !lead.unsubscribedAt;
+export function shouldConsiderCheckoutLead(lead) {
+  return lead && lead.email && lead.status === 'checkout_started' && !lead.purchasedAt && !lead.unsubscribedAt;
+}
+
+export function shouldConsiderAbandonLead(lead) {
+  return lead && lead.email && lead.status === 'quiz_abandoned' && !lead.purchasedAt && !lead.unsubscribedAt;
+}
+
+export function statusForLeadSubmission(body, existing) {
+  if (existing?.status === 'purchased') return 'purchased';
+  return body?.leadType === 'quiz_abandon' ? 'quiz_abandoned' : 'checkout_started';
 }
 
 async function sendStepAndRecord(env, lead, step) {
@@ -169,7 +211,8 @@ async function sendFollowup(env, lead, step) {
   if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY secret missing');
   const productUrl = productLinkFor(lead);
   const checkoutUrl = lead.checkoutUrl || productUrl;
-  const ctaUrl = step.ctaTarget === 'checkout' ? checkoutUrl : productUrl;
+  const resumeUrl = buildResumeUrl(lead, env);
+  const ctaUrl = step.ctaTarget === 'checkout' ? checkoutUrl : (step.ctaTarget === 'resume' ? resumeUrl : productUrl);
   const baseUrl = env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev';
   const unsubscribeUrl = `${baseUrl}/api/unsubscribe?id=${encodeURIComponent(lead.id)}`;
   const html = step.template(lead, ctaUrl, unsubscribeUrl);
@@ -200,6 +243,12 @@ function productLinkFor(lead) {
   return PRODUCT_LINKS[plan] || PRODUCT_LINKS.semaglutide;
 }
 
+export function buildResumeUrl(lead, env = {}) {
+  const site = String(env.SITE_URL || env.PUBLIC_SITE_URL || env.FUNNEL_URL || 'https://go.tidemedix.com').replace(/\/$/, '');
+  const id = encodeURIComponent(lead?.id || '');
+  return `${site}/?resume=height_weight${id ? `&lead=${id}` : ''}`;
+}
+
 function normalizePlan(value) {
   const s = String(value || '').toLowerCase().trim();
   if (s === 'tirzepatide') return 'tirzepatide';
@@ -207,6 +256,38 @@ function normalizePlan(value) {
 }
 
 // ---------- Email templates ----------
+
+function renderAbandonTwentyMinuteEmail(lead, ctaUrl, unsubscribeUrl) {
+  return emailShell(`
+    <p>You started your TideMedix assessment, but it looks like you didn't finish the health profile.</p>
+    <p>The next question is your height and current weight. It should take less than a minute to continue.</p>
+    ${ctaButton(ctaUrl, 'Continue your assessment')}
+  `, unsubscribeUrl);
+}
+
+function renderAbandonNextMorningEmail(lead, ctaUrl, unsubscribeUrl) {
+  return emailShell(`
+    <p>Your TideMedix assessment is almost ready.</p>
+    <p>We saved your place. Finish the height and weight step so the screening can continue toward your treatment options.</p>
+    ${ctaButton(ctaUrl, 'Continue where you left off')}
+  `, unsubscribeUrl);
+}
+
+function renderAbandonTwoDayEmail(lead, ctaUrl, unsubscribeUrl) {
+  return emailShell(`
+    <p>Still want to see if prescription weight management may be appropriate for you?</p>
+    <p>You only need to finish the remaining assessment questions. Your next step is height and current weight.</p>
+    ${ctaButton(ctaUrl, 'Finish the assessment')}
+  `, unsubscribeUrl);
+}
+
+function renderAbandonFiveDayEmail(lead, ctaUrl, unsubscribeUrl) {
+  return emailShell(`
+    <p>This is the last reminder about your unfinished TideMedix assessment.</p>
+    <p>If now isn't the right time, no problem. If you'd still like to continue, your assessment will reopen at the height and current weight question.</p>
+    ${ctaButton(ctaUrl, 'Complete your assessment')}
+  `, unsubscribeUrl);
+}
 
 function renderWelcomeEmail(lead, ctaUrl, unsubscribeUrl) {
   const name = lead.firstName ? ` ${escapeHtml(lead.firstName)}` : '';
