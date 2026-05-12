@@ -436,7 +436,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .progress-outer { background: var(--border-default) !important; }
   .progress-inner { background: var(--brand-primary) !important; }
   .quiz-body { max-width: 640px !important; padding: 32px 24px 120px !important; }
-  .quiz-avatar { width: 52px; height: 52px; border-radius: 999px; object-fit: cover; object-position: center 28%; display: block; margin: 0 0 18px 12px; border: 1px solid var(--border-default); box-shadow: var(--shadow-sm); background: var(--bg-accent-soft); }
+  .quiz-avatar { width: 52px; height: 52px; border-radius: 999px; object-fit: cover; object-position: center 24%; display: block; margin: 0 0 18px 12px; border: 1px solid var(--border-default); box-shadow: var(--shadow-sm); background: var(--bg-accent-soft); }
   .quiz-question { font-size: clamp(30px, 5vw, 44px) !important; font-weight: 700 !important; color: var(--text-primary) !important; line-height: 1.05 !important; letter-spacing: -0.045em; margin-bottom: 22px !important; }
   .quiz-option { min-height: 78px; padding: 20px 22px !important; margin-bottom: 14px !important; background: var(--bg-canvas) !important; border: 1px solid var(--border-strong) !important; border-radius: 14px; box-shadow: var(--shadow-sm); }
   .quiz-option:hover { border-color: var(--brand-primary) !important; background: var(--bg-soft) !important; }
@@ -657,7 +657,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="quiz-header">
     <button class="quiz-close" onclick="closeQuiz()">←</button>
     <div class="header-logo">TIDEMEDIX</div>
-    <div class="quiz-step-label" id="step-counter">Step 1</div>
+    <div class="quiz-step-label" id="step-counter">About you</div>
   </div>
   <div class="progress-outer">
     <div class="progress-inner" id="progress-bar"></div>
@@ -858,11 +858,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
   }
 
+  function getPhaseLabel(step) {
+    const aboutYou = ['goal','motivation','blockers','excited','state','dob','email'];
+    const healthProfile = ['height_weight','goal_weight','sex','pregnancy','breastfeeding'];
+    const medicalHistory = ['contraindications','eating_symptoms','eating_diagnosis','eating_remission','mental_health','self_harm','gi_conditions','prior_glp1','current_med','medications','allergies','activity','blood_pressure'];
+    const almostDone = ['anything_else','calculating'];
+    const yourResults = ['plan','contact','eligible','provider_review','not_eligible'];
+
+    if (!step) return 'About you';
+    if (aboutYou.includes(step.id)) return 'About you';
+    if (healthProfile.includes(step.id)) return 'Health profile';
+    if (medicalHistory.includes(step.id)) return 'Medical history';
+    if (almostDone.includes(step.id)) return 'Almost done';
+    if (yourResults.includes(step.id)) return 'Your results';
+    return 'About you';
+  }
+
   function updateProgress() {
     visibleFlow = getVisibleSteps();
+    const step = visibleFlow[currentIndex];
     const pct = ((currentIndex + 1) / visibleFlow.length) * 100;
     document.getElementById('progress-bar').style.width = pct + '%';
-    document.getElementById('step-counter').textContent = 'Step ' + (currentIndex + 1);
+    document.getElementById('step-counter').textContent = getPhaseLabel(step);
   }
 
   function selectPlan(plan) {
