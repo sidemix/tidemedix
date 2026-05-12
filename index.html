@@ -700,6 +700,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     };
   }
 
+  function trackMetaSafe(eventName, params, standard) {
+    const cleanParams = Object.assign({ funnel: 'tidemedix_quiz' }, params || {}, getStoredUtms());
+    // Do not pass email, phone, height, weight, DOB, or health answers into Meta.
+    ['email','phone','first_name','last_name','dob','height','weight','bmi','state'].forEach(k => delete cleanParams[k]);
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event: eventName }, cleanParams));
+    if (typeof window.fbq === 'function') {
+      try {
+        window.fbq(standard ? 'track' : 'trackCustom', standard || eventName, cleanParams);
+      } catch (err) {
+        console.warn('Meta tracking failed', eventName, err);
+      }
+    }
+  }
+
   const quizSteps = [
     { id:'goal', q:"What's your weight loss goal?", type:'single', options:[['1-15','Losing 1–15 lbs'],['16-50','Losing 16–50 lbs'],['51-plus','Losing 51+ lbs'],['not-sure','Not sure, I just want to lose weight']] },
     { id:'motivation', q:"What's the main thing that's motivating you to lose weight?", type:'single', options:[['future-health','Looking out for my future health'],['upcoming-event','An upcoming event'],['cravings','Controlling my cravings'],['feel-better','Feeling better in my body'],['maintaining-progress',"Maintaining progress I've already made"]] },
@@ -748,8 +763,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     currentIndex = stepId ? Math.max(0, visibleFlow.findIndex(step => step.id === stepId)) : 0;
     if (currentIndex < 0) currentIndex = 0;
     renderStep();
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(Object.assign({ event:'view_content', content_name:'Quiz Started' }, getStoredUtms()));
+    trackMetaSafe('view_content', { content_name:'Quiz Started' });
   }
 
   function closeQuiz() {
@@ -766,8 +780,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     root.innerHTML = `<div class="quiz-body"><img class="quiz-avatar" src="${AVATAR_SRC}" alt="TideMedix Care Team"><div class="quiz-question">${step.q}</div>${renderControl(step)}</div>`;
     hydrateStep(step);
     updateProgress();
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(Object.assign({ event:'quiz_step_view', quiz_step: currentIndex + 1, quiz_step_id: step.id, content_name:'Quiz Step ' + (currentIndex + 1) }, getStoredUtms()));
+    trackMetaSafe('quiz_step_view', { quiz_step: currentIndex + 1, quiz_step_id: step.id, content_name:'Quiz Step ' + (currentIndex + 1) });
     document.getElementById('quiz-overlay').scrollTop = 0;
   }
 
@@ -854,8 +867,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   async function nextStep() {
     visibleFlow = getVisibleSteps();
     const step = visibleFlow[currentIndex];
+    if (step) {
+      trackMetaSafe('quiz_step_complete', { quiz_step: currentIndex + 1, quiz_step_id: step.id, content_name:'Quiz Step ' + (currentIndex + 1) + ' Complete' });
+    }
     if (step && step.id === 'email') {
-      try { await captureQuizAbandon(); } catch (err) { console.warn('Quiz abandon capture failed', err); }
+      try {
+        const captured = await captureQuizAbandon();
+        if (captured) trackMetaSafe('quiz_email_captured', { quiz_step: currentIndex + 1, quiz_step_id: step.id, content_name:'Quiz Email Captured' }, 'Lead');
+      } catch (err) { console.warn('Quiz abandon capture failed', err); }
     }
     if (currentIndex < visibleFlow.length - 1) {
       currentIndex += 1;
@@ -920,7 +939,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const data = await res.json();
         if (data.id) localStorage.setItem('tidemedix_resume_lead_id', data.id);
       } catch (e) {}
+      return true;
     }
+    return false;
   }
 
   async function captureLeadBeforeCheckout(checkoutUrl) {
@@ -979,9 +1000,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     params.set('affId', affId);
     params.set('clickid', clickid);
 
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(Object.assign({ event:'lead_submit', email:answers.contactEmail || answers.email || '', first_name:answers.firstName || '', value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide', tier:selectedPlan }, getStoredUtms()));
-    window.dataLayer.push(Object.assign({ event:'begin_checkout', email:answers.contactEmail || answers.email || '', first_name:answers.firstName || '', value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide', tier:selectedPlan }, getStoredUtms()));
+    trackMetaSafe('lead_submit', { value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide', tier:selectedPlan }, 'Lead');
+    trackMetaSafe('begin_checkout', { value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide', tier:selectedPlan }, 'InitiateCheckout');
 
     const checkoutUrl = 'https://checkout.tidemedix.com/wl_checkout/?' + params.toString();
     try { await captureLeadBeforeCheckout(checkoutUrl); } catch (err) { console.warn('Lead capture failed; continuing to checkout', err); }
