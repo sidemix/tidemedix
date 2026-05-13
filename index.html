@@ -446,6 +446,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .quiz-checkbox { border: 2px solid var(--border-strong) !important; color: #fff; }
   .quiz-option.selected .quiz-checkbox { background: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
   .quiz-btn { background: var(--text-primary) !important; color: #fff !important; border-radius: 10px !important; }
+  .quiz-helper { color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: -8px 0 18px; }
+  @media (max-width: 560px) { .quiz-continue { position: sticky; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 8; box-shadow: 0 14px 34px rgba(26,31,46,.20); } .quiz-continue:disabled { box-shadow: none; } }
   .quiz-input { background: var(--bg-canvas) !important; border: 1px solid var(--border-default) !important; color: var(--text-primary) !important; border-radius: 8px !important; }
   .quiz-input:focus { border: 2px solid var(--brand-primary) !important; }
   .quiz-label { color: var(--text-secondary) !important; }
@@ -702,7 +704,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   function renderControl(step) {
     if (step.type === 'single') return step.options.map(([v,l]) => optionHtml(step.id,v,l,false)).join('');
-    if (step.type === 'multi') return step.options.map(([v,l]) => optionHtml(step.id,v,l,true)).join('') + `<button class="quiz-btn" id="continue-btn" onclick="nextStep()" disabled>Continue →</button>`;
+    if (step.type === 'multi') return `<div class="quiz-helper">Select all that apply, then continue.</div>` + step.options.map(([v,l]) => optionHtml(step.id,v,l,true)).join('') + `<button class="quiz-btn quiz-continue" id="continue-btn" onclick="nextStep()" disabled>Continue →</button>`;
     if (step.type === 'state') return `<select class="quiz-input" id="q-state" onchange="setAnswer('${step.id}', this.value, false)"><option value="">Select your state</option>${Object.entries(states).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><button class="quiz-btn" id="continue-btn" onclick="nextStep()" disabled>Continue →</button>`;
     if (step.type === 'date') return `<input class="quiz-input" id="q-dob" type="date" oninput="setAnswer('${step.id}', this.value, false)"><button class="quiz-btn" id="continue-btn" onclick="nextStep()" disabled>Continue →</button>`;
     if (step.type === 'email') return `<input class="quiz-input" id="q-email-gate" type="email" placeholder="you@email.com" oninput="setAnswer('${step.id}', this.value, false)"><button class="quiz-btn" id="continue-btn" onclick="nextStep()" disabled>Continue →</button>`;
@@ -749,6 +751,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
     answers[id] = arr;
     renderStep();
+    if (value === step.none) setTimeout(nextStep, 220);
   }
 
   function showTextBox(id) {
