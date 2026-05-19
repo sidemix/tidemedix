@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   ABANDON_EMAIL_STEPS,
   EMAIL_STEPS,
+  appendEmailAttribution,
+  buildEmailClickUrl,
   buildResumeUrl,
   shouldConsiderAbandonLead,
   shouldConsiderCheckoutLead,
@@ -39,6 +41,20 @@ test('quiz abandoners are separated from checkout/completed leads', () => {
   assert.equal(shouldConsiderCheckoutLead(abandon), false);
   assert.equal(shouldConsiderAbandonLead(checkout), false);
   assert.equal(shouldConsiderCheckoutLead(checkout), true);
+});
+
+test('email CTA URLs route through the click tracker and preserve destination params', () => {
+  const clickUrl = buildEmailClickUrl({ id: 'lead-123' }, { key: 'followup_24h' }, { PUBLIC_BASE_URL: 'https://tidemedix-leads.tylerdefi.workers.dev/' });
+  assert.equal(clickUrl, 'https://tidemedix-leads.tylerdefi.workers.dev/api/email-click?id=lead-123&step=followup_24h');
+
+  const destination = appendEmailAttribution('https://tidemedix.com/therapy/weight-loss-glp-1/?c3=transactionId&affId=AA0F177B', 'followup_24h');
+  const parsed = new URL(destination);
+  assert.equal(parsed.searchParams.get('c3'), 'transactionId');
+  assert.equal(parsed.searchParams.get('affId'), 'AA0F177B');
+  assert.equal(parsed.searchParams.get('utm_source'), 'email');
+  assert.equal(parsed.searchParams.get('utm_medium'), 'followup');
+  assert.equal(parsed.searchParams.get('utm_campaign'), 'tidemedix_followup_24h');
+  assert.equal(parsed.searchParams.get('src'), 'email_followup_24h');
 });
 
 test('completed checkout sequence remains the regular follow-up track', () => {

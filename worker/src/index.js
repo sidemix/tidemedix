@@ -43,6 +43,7 @@ export default {
       if (url.pathname === '/api/resume' && request.method === 'GET') return handleResume(request, env);
       if (url.pathname === '/api/purchase' && request.method === 'POST') return handlePurchase(request, env);
       if (url.pathname === '/api/purchased' && request.method === 'POST') return handlePurchase(request, env);
+      if (url.pathname === '/api/email-click' && request.method === 'GET') return handleEmailClick(request, env);
       if (url.pathname === '/api/unsubscribe' && request.method === 'GET') return handleUnsubscribe(request, env);
       return json(request, { ok: false, error: 'not_found' }, 404);
     } catch (error) {
@@ -142,6 +143,40 @@ async function handlePurchase(request, env) {
   return json(request, { ok: true });
 }
 
+async function handleEmailClick(request, env) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id') || '';
+  const stepKey = url.searchParams.get('step') || '';
+  const fallbackUrl = buildResumeUrl({ id }, env);
+  if (!id || !stepKey) return redirect(fallbackUrl);
+
+  const lead = await getLead(env, id);
+  if (!lead || !lead.email) return redirect(fallbackUrl);
+
+  const step = [...EMAIL_STEPS, ...ABANDON_EMAIL_STEPS].find(s => s.key === stepKey);
+  const destination = trackedDestinationForStep(lead, step, env, stepKey);
+  const now = new Date().toISOString();
+  const eventId = crypto.randomUUID();
+  const clickEvent = {
+    id: eventId,
+    leadId: lead.id,
+    step: stepKey,
+    target: step?.ctaTarget || 'fallback',
+    destination,
+    timestamp: now,
+    userAgent: clean(request.headers.get('user-agent')),
+    ipHash: await sha256Hex(request.headers.get('cf-connecting-ip') || '')
+  };
+
+  await env.TIDEMEDIX_LEADS.put(`click:${lead.id}:${Date.now()}:${eventId}`, JSON.stringify(clickEvent));
+  lead.clicks = lead.clicks || {};
+  lead.clicks[stepKey] = now;
+  lead.updatedAt = now;
+  await env.TIDEMEDIX_LEADS.put(`lead:${lead.id}`, JSON.stringify(lead));
+
+  return redirect(destination);
+}
+
 async function handleUnsubscribe(request, env) {
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return new Response('Missing unsubscribe id', { status: 400 });
@@ -209,12 +244,9 @@ async function sendStepAndRecord(env, lead, step) {
 
 async function sendFollowup(env, lead, step) {
   if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY secret missing');
-  const productUrl = productLinkFor(lead);
-  const checkoutUrl = lead.checkoutUrl || productUrl;
-  const resumeUrl = buildResumeUrl(lead, env);
-  const ctaUrl = step.ctaTarget === 'checkout' ? checkoutUrl : (step.ctaTarget === 'resume' ? resumeUrl : productUrl);
   const baseUrl = env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev';
   const unsubscribeUrl = `${baseUrl}/api/unsubscribe?id=${encodeURIComponent(lead.id)}`;
+  const ctaUrl = buildEmailClickUrl(lead, step, env);
   const html = step.template(lead, ctaUrl, unsubscribeUrl);
   const subject = typeof step.subject === 'function' ? step.subject(escapeHtml(lead.firstName || '')) : step.subject;
 
@@ -241,6 +273,36 @@ async function sendFollowup(env, lead, step) {
 function productLinkFor(lead) {
   const plan = normalizePlan(lead?.plan);
   return PRODUCT_LINKS[plan] || PRODUCT_LINKS.semaglutide;
+}
+
+export function buildEmailClickUrl(lead, step, env = {}) {
+  const baseUrl = String(env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev').replace(/\/$/, '');
+  const id = encodeURIComponent(lead?.id || '');
+  const stepKey = encodeURIComponent(step?.key || 'unknown');
+  return `${baseUrl}/api/email-click?id=${id}&step=${stepKey}`;
+}
+
+function trackedDestinationForStep(lead, step, env, stepKey) {
+  const productUrl = productLinkFor(lead);
+  const checkoutUrl = lead.checkoutUrl || productUrl;
+  const resumeUrl = buildResumeUrl(lead, env);
+  const raw = step?.ctaTarget === 'checkout' ? checkoutUrl : (step?.ctaTarget === 'resume' ? resumeUrl : productUrl);
+  return appendEmailAttribution(raw, stepKey);
+}
+
+export function appendEmailAttribution(rawUrl, stepKey) {
+  const fallback = 'https://go.tidemedix.com/';
+  let url;
+  try {
+    url = new URL(rawUrl || fallback);
+  } catch (_) {
+    url = new URL(fallback);
+  }
+  url.searchParams.set('utm_source', 'email');
+  url.searchParams.set('utm_medium', 'followup');
+  url.searchParams.set('utm_campaign', `tidemedix_${stepKey || 'unknown'}`);
+  url.searchParams.set('src', `email_${stepKey || 'unknown'}`);
+  return url.toString();
 }
 
 export function buildResumeUrl(lead, env = {}) {
@@ -384,6 +446,10 @@ function json(request, data, status = 200) {
   return corsResponse(request, JSON.stringify(data), status, { 'content-type': 'application/json; charset=utf-8' });
 }
 
+function redirect(url, status = 302) {
+  return new Response(null, { status, headers: { location: url } });
+}
+
 function corsResponse(request, body, status = 200, extraHeaders = {}) {
   const origin = request.headers.get('origin') || '';
   const allowOrigin = CORS_ORIGINS.has(origin) ? origin : 'https://go.tidemedix.com';
@@ -404,6 +470,12 @@ function clean(value) { return String(value || '').trim().slice(0, 500); }
 function cleanUrl(value) {
   const s = String(value || '').trim();
   return /^https:\/\//.test(s) ? s.slice(0, 3000) : '';
+}
+async function sha256Hex(value) {
+  if (!value) return '';
+  const data = new TextEncoder().encode(value);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 function escapeHtml(s) { return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
