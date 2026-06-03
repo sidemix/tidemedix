@@ -622,32 +622,92 @@ async function sendStepAndRecord(env, lead, step) {
 }
 
 async function sendFollowup(env, lead, step) {
-  if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY secret missing');
   const baseUrl = env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev';
   const unsubscribeUrl = `${baseUrl}/api/unsubscribe?id=${encodeURIComponent(lead.id)}`;
   const ctaUrl = buildEmailClickUrl(lead, step, env);
   const html = step.template(lead, ctaUrl, unsubscribeUrl);
   const subject = typeof step.subject === 'function' ? step.subject(escapeHtml(lead.firstName || '')) : step.subject;
 
-  const response = await fetch('https://api.resend.com/emails', {
+  await sendWithAwsSes(env, {
+    from: env.FROM_EMAIL || 'TideMedix <care@tidemedix.com>',
+    to: lead.email,
+    subject,
+    html,
+    text: emailHtmlToText(html)
+  });
+}
+
+async function sendWithAwsSes(env, message) {
+  const accessKeyId = env.AWS_SES_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = env.AWS_SES_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY;
+  const region = env.AWS_SES_REGION || env.AWS_REGION || 'us-east-1';
+  if (!accessKeyId || !secretAccessKey) throw new Error('AWS SES credentials missing');
+
+  const host = `email.${region}.amazonaws.com`;
+  const endpoint = `https://${host}/v2/email/outbound-emails`;
+  const body = JSON.stringify({
+    FromEmailAddress: message.from,
+    Destination: { ToAddresses: [message.to] },
+    Content: {
+      Simple: {
+        Subject: { Data: message.subject, Charset: 'UTF-8' },
+        Body: {
+          Html: { Data: message.html, Charset: 'UTF-8' },
+          Text: { Data: message.text, Charset: 'UTF-8' }
+        }
+      }
+    }
+  });
+
+  const now = new Date();
+  const amzDate = toAmzDate(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = await sha256Hex(body);
+  const canonicalHeaders = `content-type:application/json\nhost:${host}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = 'content-type;host;x-amz-date';
+  const canonicalRequest = ['POST', '/v2/email/outbound-emails', '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+  const credentialScope = `${dateStamp}/${region}/ses/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, await sha256Hex(canonicalRequest)].join('\n');
+  const signingKey = await getAwsSigningKey(secretAccessKey, dateStamp, region, 'ses');
+  const signature = await hmacHex(signingKey, stringToSign);
+  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'authorization': `Bearer ${env.RESEND_API_KEY}`,
-      'content-type': 'application/json'
+      'content-type': 'application/json',
+      'x-amz-date': amzDate,
+      authorization
     },
-    body: JSON.stringify({
-      from: env.FROM_EMAIL || 'TideMedix <care@tidemedix.com>',
-      to: [lead.email],
-      subject,
-      html,
-      text: emailHtmlToText(html),
-      headers: {
-        'List-Unsubscribe': `<${unsubscribeUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-      }
-    })
+    body
   });
-  if (!response.ok) throw new Error(`Resend failed ${response.status}: ${await response.text()}`);
+  if (!response.ok) throw new Error(`AWS SES failed ${response.status}: ${await response.text()}`);
+}
+
+function toAmzDate(date) {
+  return date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+}
+
+async function hmacRaw(key, value) {
+  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(value));
+  return new Uint8Array(signature);
+}
+
+async function hmacHex(key, value) {
+  return bytesToHex(await hmacRaw(key, value));
+}
+
+async function getAwsSigningKey(secretAccessKey, dateStamp, region, service) {
+  const encoder = new TextEncoder();
+  const kDate = await hmacRaw(encoder.encode(`AWS4${secretAccessKey}`), dateStamp);
+  const kRegion = await hmacRaw(kDate, region);
+  const kService = await hmacRaw(kRegion, service);
+  return hmacRaw(kService, 'aws4_request');
+}
+
+function bytesToHex(bytes) {
+  return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function productLinkFor(lead) {
@@ -1217,10 +1277,9 @@ function cleanUrl(value) {
   return /^https:\/\//.test(s) ? s.slice(0, 3000) : '';
 }
 async function sha256Hex(value) {
-  if (!value) return '';
-  const data = new TextEncoder().encode(value);
+  const data = value instanceof Uint8Array ? value : new TextEncoder().encode(String(value || ''));
   const hash = await crypto.subtle.digest('SHA-256', data);
-  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return bytesToHex(new Uint8Array(hash));
 }
 function escapeHtml(s) { return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }

@@ -12,7 +12,8 @@ id = "371b7c9c1a544a819c592ab50aecdd93"
 crons = ["17 * * * *"]
 
 [vars]
-FROM_EMAIL = "TideMedix <care@wellnesscenteroflakewoodranch.com>"
+FROM_EMAIL = "TideMedix <care@tidemedix.com>"
+AWS_SES_REGION = "us-east-1"
 CHECKOUT_URL = "https://try.tidemedix.com/intake/mv-xtyd5b"
 RIMO_INTAKE_URL = "https://try.tidemedix.com/intake/mv-xtyd5b"
 PATIENT_PORTAL_URL = "https://try.tidemedix.com/sign-in?returnTo=%2F"
