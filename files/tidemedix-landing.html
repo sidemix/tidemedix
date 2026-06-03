@@ -490,7 +490,7 @@ html,body{max-width:100%;overflow-x:hidden}
   .imagebox{width:100%;max-width:100%;height:292px;min-height:292px;margin:0 auto}
 }
 
-.product-hero-pair{display:grid;grid-template-columns:1fr;gap:14px}.product-hero-card{margin:0;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 12px 28px rgba(26,31,46,.10)}.product-hero-card img{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:center;display:block;border-radius:0}.product-hero-card figcaption{position:absolute;left:12px;bottom:12px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.90);backdrop-filter:blur(10px);color:var(--sage-dark);font-size:12px;font-weight:850;letter-spacing:.02em}.split-note .product-hero-pair img{display:block}@media(max-width:900px){.product-hero-pair{grid-template-columns:1fr 1fr}.product-hero-card figcaption{font-size:11px;left:10px;bottom:10px}}@media(max-width:560px){.product-hero-pair{grid-template-columns:1fr}.product-hero-card img{aspect-ratio:16/10}}
+.product-choice-section{background:var(--soft)}.product-choice-panel{max-width:980px;margin:0 auto;text-align:center}.product-choice-panel .head{margin-bottom:24px}.product-choice-panel .head h2{font-size:clamp(30px,3.4vw,44px)}.product-choice-panel .head p{max-width:720px;margin:0 auto;color:var(--muted);font-size:16px;line-height:1.65}.product-hero-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:28px;text-align:left}.product-hero-card{margin:0;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:#fff;box-shadow:0 16px 42px rgba(26,31,46,.10);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.product-hero-card:hover{transform:translateY(-2px);border-color:rgba(45,125,110,.34);box-shadow:0 20px 52px rgba(26,31,46,.14)}.product-hero-card img{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:center;display:block}.product-card-body{padding:18px 18px 20px}.product-card-kicker{display:inline-flex;align-items:center;margin-bottom:10px;padding:6px 9px;border-radius:999px;background:var(--sage-soft);color:var(--sage-dark);font-size:11px;font-weight:850;letter-spacing:.07em;text-transform:uppercase}.product-card-title{font-size:21px;font-weight:850;letter-spacing:-.025em;color:var(--ink);margin-bottom:10px}.product-card-list{list-style:none;display:grid;gap:8px;margin:0;padding:0}.product-card-list li{position:relative;padding-left:22px;color:var(--muted);font-size:14px;line-height:1.45}.product-card-list li:before{content:"✓";position:absolute;left:0;top:0;color:var(--sage);font-weight:900}.product-choice-cta{margin-top:28px;display:flex;flex-direction:column;align-items:center;gap:10px}.product-choice-cta .under{margin-top:0}.product-disclaimer{max-width:760px;margin:18px auto 0;color:var(--muted);font-size:11px;line-height:1.55}@media(max-width:900px){.product-hero-pair{grid-template-columns:1fr;max-width:520px;margin-left:auto;margin-right:auto}.product-choice-panel{text-align:center}.product-card-body{text-align:left}}@media(max-width:560px){.product-hero-card{border-radius:18px}.product-card-title{font-size:19px}.product-choice-cta .cta{width:100%}.product-hero-card img{aspect-ratio:16/10}}
 </style>
 </head>
 <body>
@@ -560,24 +560,46 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </section>
 
-  <section class="section soft">
+  <section class="section product-choice-section">
     <div class="wrap">
-      <div class="split-note">
-        <div>
-          <h3>Clear pricing, just not on the first screen.</h3>
-          <p>No insurance forms. No surprise membership fee. Exact plan pricing appears after eligibility context and before checkout.</p>
-          <button class="cta" onclick="startQuiz()">Start My Assessment</button>
+      <div class="product-choice-panel">
+        <div class="head">
+          <h2>Two Semaglutide options. One private medical review.</h2>
+          <p>Start with a quick assessment. If eligible, your provider can determine whether oral Semaglutide or injectable Semaglutide may be appropriate for you. Clear pricing appears before checkout.</p>
         </div>
+
         <div class="product-hero-pair" aria-label="Semaglutide treatment options">
           <figure class="product-hero-card">
             <img src="assets/go-semaglutide-oral-pill.jpg?v=20260603-oral" alt="TideMedix Semaglutide oral pill package on a calm countertop">
-            <figcaption>Semaglutide oral pills</figcaption>
+            <figcaption class="product-card-body">
+              <span class="product-card-kicker">Oral option</span>
+              <div class="product-card-title">Oral Semaglutide</div>
+              <ul class="product-card-list">
+                <li>Needle-free treatment format</li>
+                <li>Monthly plan shown before checkout</li>
+                <li>Provider-reviewed if eligible</li>
+              </ul>
+            </figcaption>
           </figure>
           <figure class="product-hero-card">
             <img src="assets/go-semaglutide-injection.jpg?v=20260603-injection" alt="TideMedix Semaglutide injection vial held in hand">
-            <figcaption>Semaglutide injections</figcaption>
+            <figcaption class="product-card-body">
+              <span class="product-card-kicker">Injectable option</span>
+              <div class="product-card-title">Semaglutide Injection</div>
+              <ul class="product-card-list">
+                <li>Weekly injectable format</li>
+                <li>Ships discreetly if prescribed</li>
+                <li>Provider-reviewed if eligible</li>
+              </ul>
+            </figcaption>
           </figure>
         </div>
+
+        <div class="product-choice-cta">
+          <button class="cta" onclick="startQuiz()">Check Eligibility</button>
+          <p class="under"><strong>No payment to start.</strong> Takes a few minutes · pricing shown before checkout.</p>
+        </div>
+        <p class="product-disclaimer">Medication format and dosing are determined by a licensed provider after reviewing your health history. Availability may vary by eligibility and prescribing decision.</p>
       </div>
     </div>
   </section>
