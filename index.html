@@ -385,6 +385,21 @@
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
     }
+    .how-portrait {
+      display: block;
+      width: min(100%, 520px);
+      margin-inline: auto;
+    }
+    .how-portrait img {
+      width: 100%;
+      min-height: 540px;
+      aspect-ratio: 4 / 5;
+      object-fit: cover;
+      object-position: 50% 18%;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
     .steps { display: grid; gap: 14px; margin-top: 28px; }
     .step {
       display: grid;
@@ -532,6 +547,8 @@
       .lifestyle-images img { border-radius: 20px; }
       .lifestyle-images img:first-child, .lifestyle-images img:last-child { min-height: 240px; }
       .image-stack { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .how-portrait { width: min(100%, 420px); }
+      .how-portrait img { min-height: 440px; border-radius: 24px; }
       .feature-content { padding: 26px; }
       .final-cta { padding: 62px 0; }
       .cta-box .btn { width: 100%; }
@@ -683,9 +700,8 @@
 
     <section class="section" id="how" aria-labelledby="how-heading">
       <div class="wrap split">
-        <div class="image-stack" aria-hidden="true">
-          <img src="ProductHeroImages/how-bath-counter-wide.png?v=20260602-producthero" alt="" />
-          <img src="ProductHeroImages/how-counter-vial-wide.jpeg?v=20260602-producthero" alt="" />
+        <div class="how-portrait" aria-hidden="true">
+          <img src="ProductHeroImages/how-window-girl-portrait.png?v=20260603-howgirl" alt="" />
         </div>
 
         <div>
