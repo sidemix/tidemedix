@@ -42,6 +42,30 @@
     .footer-col a { display:block; margin:9px 0; color:var(--ink); font-size:14px; font-weight:600; } .footer-col a:hover { color:var(--primary-dark); }
     .footer-legal { border-top:1px solid var(--border); padding:18px 0 24px; color:#69737A; font-size:12px; line-height:1.55; }
     @media(max-width:860px) { .nav-links{display:none;} .footer-main{grid-template-columns:1fr;} .legal-card{padding:24px;} }
+
+
+    /* Canonical TideMedix footer — keep identical across all public pages. */
+    .tm-site-footer { background: #fff; border-top: 1px solid #E5EAE8; color: #1A1F2E; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .tm-footer-wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .tm-footer-main { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 26px; padding: 38px 0 30px; }
+    .tm-footer-brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: 0.18em; }
+    .tm-footer-brand-mark { width: 34px; height: 34px; border-radius: 12px; background: #EDF3F1; position: relative; flex: 0 0 auto; }
+    .tm-footer-brand-mark::before, .tm-footer-brand-mark::after { content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #2D7D6E; border-radius: 999px; }
+    .tm-footer-brand-mark::before { width: 16px; height: 4px; }
+    .tm-footer-brand-mark::after { width: 4px; height: 16px; }
+    .tm-footer-brand-word { display: inline-flex; align-items: baseline; gap: 0; }
+    .tm-footer-brand-tide { color: #1A1F2E; }
+    .tm-footer-brand-medix { color: #2D7D6E; }
+    .tm-footer-copy { margin: 12px 0 0; color: #5A6670; line-height: 1.55; font-size: 14px; max-width: 440px; }
+    .tm-legitscript-badge { display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin-top: 16px; padding: 8px 11px; border: 1px solid #E5EAE8; border-radius: 999px; background: #F7F9F8; color: #1F5D52; text-decoration: none; font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+    .tm-legitscript-badge::before { content: "✓"; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #2D7D6E; color: #fff; font-size: 11px; }
+    .tm-legitscript-badge:hover { border-color: #2D7D6E; background: #EDF3F1; color: #1F5D52; }
+    .tm-footer-col h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: #5A6670; }
+    .tm-footer-col a { display: block; margin: 9px 0; color: #1A1F2E; text-decoration: none; font-size: 14px; font-weight: 600; }
+    .tm-footer-col a:hover { color: #1F5D52; }
+    .tm-footer-legal { border-top: 1px solid #E5EAE8; padding: 18px 0 24px; color: #69737A; font-size: 12px; line-height: 1.55; }
+    @media (max-width: 980px) { .tm-footer-main { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .tm-footer-wrap { width: min(100% - 32px, 1120px); } .tm-footer-brand { font-size: 15px; letter-spacing: .14em; gap: 8px; } .tm-footer-brand-mark { width: 30px; height: 30px; border-radius: 10px; } }
   </style>
 </head>
 <body>
@@ -303,15 +327,32 @@
 
 <p>If you have any questions about this Privacy Policy, please send them to <a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a> or you may call us at <a href="tel:tel:+18333655589">+1 (833) 365-5589</a>  Monday through Friday during normal business hours. You may also write to us in care of our administrator at:Attn: Privacy Team/Regulatory Compliance<br>TideMedix<br>5255 Office Park Blvd, Suite 107, Bradenton, FL 34203</p>
         </article></div></section></main>
-  <footer><div class="wrap footer-main"><div><a class="brand" href="../index.html" aria-label="TideMedix home"><span class="brand-mark" aria-hidden="true"></span>TIDE<span>MEDIX</span></a><p>Modern prescription wellness with online assessment, provider review, and clear next steps when treatment is clinically appropriate.</p></div><div class="footer-col"><h3>Care</h3><a href="https://go.tidemedix.com">Start assessment</a><a href="../index.html#treatments">Treatment paths</a><a href="../index.html#how">How it works</a></div><div class="footer-col"><h3>Information</h3>
-            <a href="faq.html">FAQ</a>
-            <a href="contact.html">Contact</a>
-            <a href="privacy.html">Privacy Policy</a>
-            <a href="terms.html">Terms Of Use</a>
-            <a href="returns-refund-policy.html">Returns & Refund</a>
-            <a href="hipaa.html">HIPAA Notice</a>
-            <a href="ccpa.html">CCPA Opt-Out</a>
-            <a href="sms-terms-and-conditions.html">SMS Terms</a>
-      </div></div><div class="wrap footer-legal">TideMedix does not guarantee treatment approval or outcomes. This site is informational and does not replace medical advice. If you are experiencing a medical emergency, call emergency services immediately.</div></footer>
+  <footer class="tm-site-footer">
+  <div class="tm-footer-wrap tm-footer-main">
+    <div>
+      <a class="tm-footer-brand" href="../index.html" aria-label="TideMedix home"><span class="tm-footer-brand-mark" aria-hidden="true"></span><span class="tm-footer-brand-word"><span class="tm-footer-brand-tide">TIDE</span><span class="tm-footer-brand-medix">MEDIX</span></span></a>
+      <p class="tm-footer-copy">Modern prescription wellness with online assessment, provider review, and clear next steps when treatment is clinically appropriate.</p>
+      <a class="tm-legitscript-badge" href="https://www.legitscript.com/websites/tidemedix.com/" target="_blank" rel="noopener noreferrer">LegitScript Certified</a>
+    </div>
+    <div class="tm-footer-col">
+      <h3>Care</h3>
+      <a href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+      <a href="../index.html#treatments">Treatment paths</a>
+      <a href="../index.html#how">How it works</a>
+    </div>
+    <div class="tm-footer-col">
+      <h3>Information</h3>
+      <a href="faq.html">FAQ</a>
+      <a href="contact.html">Contact</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms Of Use</a>
+      <a href="returns-refund-policy.html">Returns &amp; Refund</a>
+      <a href="hipaa.html">HIPAA Notice</a>
+      <a href="ccpa.html">CCPA Opt-Out</a>
+      <a href="sms-terms-and-conditions.html">SMS Terms</a>
+    </div>
+  </div>
+  <div class="tm-footer-wrap tm-footer-legal">TideMedix does not guarantee treatment approval or outcomes. This site is informational and does not replace medical advice. If you are experiencing a medical emergency, call emergency services immediately.</div>
+</footer>
 </body>
 </html>
