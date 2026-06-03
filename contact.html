@@ -137,7 +137,91 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .tm-footer-legal { border-top: 1px solid #E5EAE8; padding: 18px 0 24px; color: #69737A; font-size: 12px; line-height: 1.55; }
     @media (max-width: 980px) { .tm-footer-main { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .tm-footer-wrap { width: min(100% - 32px, 1120px); } .tm-footer-brand { font-size: 15px; letter-spacing: .14em; gap: 8px; } .tm-footer-brand-mark { width: 30px; height: 30px; border-radius: 10px; } }
-  </style>
+  
+
+    /* TideMedix product-style shield brand mark */
+    .brand-mark,
+    .tm-footer-brand-mark {
+      width: 36px !important;
+      height: 40px !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      position: relative !important;
+      flex: 0 0 auto !important;
+      box-shadow: none !important;
+      overflow: visible !important;
+      filter: drop-shadow(0 8px 18px rgba(45, 125, 110, 0.16));
+    }
+    .brand-mark::before,
+    .tm-footer-brand-mark::before {
+      content: "" !important;
+      position: absolute !important;
+      top: 1px !important;
+      right: 2px !important;
+      bottom: 0 !important;
+      left: 2px !important;
+      width: auto !important;
+      height: auto !important;
+      translate: none !important;
+      border-radius: 0 !important;
+      background: linear-gradient(145deg, #2D7D6E 0%, #1F6E60 100%) !important;
+      clip-path: polygon(50% 3%, 89% 22%, 87% 54%, 73% 78%, 50% 96%, 27% 78%, 13% 54%, 11% 22%);
+      opacity: .98;
+    }
+    .brand-mark::after,
+    .tm-footer-brand-mark::after {
+      content: "+" !important;
+      position: absolute !important;
+      left: 50% !important;
+      top: 48% !important;
+      width: auto !important;
+      height: auto !important;
+      translate: -50% -50% !important;
+      background: transparent !important;
+      border-radius: 0 !important;
+      color: #FFFFFF !important;
+      font-size: 24px !important;
+      line-height: 1 !important;
+      font-weight: 900 !important;
+      letter-spacing: 0 !important;
+      text-shadow: 0 1px 3px rgba(26, 31, 46, 0.22);
+    }
+    .header-logo,
+    .footer-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      padding-left: 46px;
+    }
+    .header-logo::before,
+    .footer-logo::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 36px;
+      height: 40px;
+      transform: translateY(-50%);
+      background: linear-gradient(145deg, #2D7D6E 0%, #1F6E60 100%);
+      clip-path: polygon(50% 3%, 89% 22%, 87% 54%, 73% 78%, 50% 96%, 27% 78%, 13% 54%, 11% 22%);
+      filter: drop-shadow(0 8px 18px rgba(45, 125, 110, 0.16));
+    }
+    .header-logo::after,
+    .footer-logo::after {
+      content: "+";
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translate(-50%, -52%);
+      color: #fff;
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-shadow: 0 1px 3px rgba(26, 31, 46, 0.22);
+    }
+</style>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
