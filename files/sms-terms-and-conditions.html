@@ -18,7 +18,7 @@
     .nav { height:74px; display:flex; align-items:center; justify-content:space-between; gap:24px; }
     .brand { display:inline-flex; align-items:center; gap:12px; font-family:"Arial Narrow","Helvetica Neue Condensed",Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:19px; font-weight:800; letter-spacing:.055em; color:var(--ink); text-transform:uppercase; }
     .brand-mark { width:34px; height:34px; border-radius:12px; background:var(--soft-strong); position:relative; flex:0 0 auto; }
-    .brand-mark:before,.brand-mark:after { content:""; position:absolute; left:50%; top:50%; translate:-50% -50%; background:var(--ink); border-radius:999px; }
+    .brand-mark:before,.brand-mark:after { content:""; position:absolute; left:50%; top:50%; translate:-50% -50%; background:var(--primary); border-radius:999px; }
     .brand-mark:before { width:16px; height:4px; } .brand-mark:after { width:4px; height:16px; } .brand-word { display:inline-flex; align-items:baseline; gap:0; color:var(--ink); } .brand-tide { color:inherit; font-weight:900; } .brand-medix { color:inherit; font-weight:500; }
     .nav-links { display:flex; align-items:center; gap:26px; color:var(--muted); font-size:14px; font-weight:600; } .nav-links a:hover { color:var(--ink); }
     .btn { display:inline-flex; align-items:center; justify-content:center; min-height:48px; padding:0 22px; border-radius:12px; border:1px solid transparent; font-size:15px; font-weight:700; white-space:nowrap; }
@@ -49,8 +49,9 @@
     .tm-footer-wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
     .tm-footer-main { display: grid; grid-template-columns: 1.35fr .8fr .8fr 1fr; gap: 26px; padding: 38px 0 30px; }
     .tm-footer-brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-family: "Arial Narrow", "Helvetica Neue Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 19px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
+    .tm-footer-brand-img { width: 34px; height: 34px; object-fit: contain; display: block; flex: 0 0 auto; }
     .tm-footer-brand-mark { width: 34px; height: 34px; border-radius: 12px; background: #EDF3F1; position: relative; flex: 0 0 auto; }
-    .tm-footer-brand-mark::before, .tm-footer-brand-mark::after { content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #1A1F2E; border-radius: 999px; }
+    .tm-footer-brand-mark::before, .tm-footer-brand-mark::after { content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #2D7D6E; border-radius: 999px; }
     .tm-footer-brand-mark::before { width: 16px; height: 4px; }
     .tm-footer-brand-mark::after { width: 4px; height: 16px; }
     .tm-footer-brand-word { display: inline-flex; align-items: baseline; gap: 0; color: #1A1F2E; }
@@ -65,7 +66,7 @@
     .tm-footer-col a:hover { color: #1F5D52; }
     .tm-footer-legal { border-top: 1px solid #E5EAE8; padding: 18px 0 24px; color: #69737A; font-size: 12px; line-height: 1.55; }
     @media (max-width: 980px) { .tm-footer-main { grid-template-columns: 1fr; } }
-    @media (max-width: 560px) { .tm-footer-wrap { width: min(100% - 32px, 1120px); } .tm-footer-brand { font-size: 15px; letter-spacing: .055em; gap: 8px; } .tm-footer-brand-mark { width: 30px; height: 30px; border-radius: 10px; } }
+    @media (max-width: 560px) { .tm-footer-wrap { width: min(100% - 32px, 1120px); } .tm-footer-brand { font-size: 15px; letter-spacing: .055em; gap: 8px; } .tm-footer-brand-img, .tm-footer-brand-mark { width: 30px; height: 30px; border-radius: 10px; } }
   
 
   
@@ -91,7 +92,7 @@
 </head>
 <body>
   <div class="announcement"><strong>Prescription treatment only after provider evaluation.</strong> TideMedix is LegitScript Certified.</div>
-  <header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html" aria-label="TideMedix home"><img class="brand-logo-img" src="../assets/Logo.png?v=dark-logo-1" alt="" aria-hidden="true"><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a><nav class="nav-links" aria-label="Primary navigation">
+  <header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html" aria-label="TideMedix home"><img class="brand-logo-img" src="/assets/Logo.png?v=green-logo-1" alt="" aria-hidden="true"><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a><nav class="nav-links" aria-label="Primary navigation">
           <a href="../index.html#treatments">Treatments</a>
           <a href="../index.html#how">How it works</a>
           <a href="../index.html#safety">Safety</a>
@@ -155,7 +156,7 @@
   <footer class="tm-site-footer">
   <div class="tm-footer-wrap tm-footer-main">
     <div>
-      <a class="tm-footer-brand" href="../index.html" aria-label="TideMedix home"><span class="tm-footer-brand-mark" aria-hidden="true"></span><span class="tm-footer-brand-word"><span class="tm-footer-brand-tide">TIDE</span><span class="tm-footer-brand-medix">MEDIX</span></span></a>
+      <a class="tm-footer-brand" href="../index.html" aria-label="TideMedix home"><img class="tm-footer-brand-img" src="/assets/Logo.png?v=green-logo-1" alt="" aria-hidden="true"><span class="tm-footer-brand-word"><span class="tm-footer-brand-tide">TIDE</span><span class="tm-footer-brand-medix">MEDIX</span></span></a>
       <p class="tm-footer-copy">Modern prescription wellness with online assessment, provider review, and clear next steps when treatment is clinically appropriate.</p>
       <a class="tm-legitscript-badge" href="https://www.legitscript.com/websites/tidemedix.com/" target="_blank" rel="noopener noreferrer">LegitScript Certified</a>
     </div>
