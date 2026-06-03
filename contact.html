@@ -50,7 +50,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     width: min(1120px, calc(100% - 40px)); margin: 0 auto;
     min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 18px;
   }
-  .header-logo { font-size: 18px; font-weight: 800; color: var(--text-primary); letter-spacing: 1.8px; }
+  .header-logo { font-family: "Arial Narrow", "Helvetica Neue Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 19px; font-weight: 800; color: var(--text-primary); letter-spacing: .055em; text-transform: uppercase; } .header-logo .brand-word { display: inline-flex; align-items: baseline; gap: 0; color: var(--text-primary); } .header-logo .brand-tide { color: inherit; font-weight: 900; } .header-logo .brand-medix { color: inherit; font-weight: 500; }
   .header-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
   .header-note::before { content: ''; width: 8px; height: 8px; border-radius: 99px; background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
   .page-hero {
@@ -119,14 +119,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .tm-site-footer { background: #fff; border-top: 1px solid #E5EAE8; color: #1A1F2E; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     .tm-footer-wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
     .tm-footer-main { display: grid; grid-template-columns: 1.35fr .8fr .8fr 1fr; gap: 26px; padding: 38px 0 30px; }
-    .tm-footer-brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: 0.18em; }
+    .tm-footer-brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-family: "Arial Narrow", "Helvetica Neue Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 19px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
     .tm-footer-brand-mark { width: 34px; height: 34px; border-radius: 12px; background: #EDF3F1; position: relative; flex: 0 0 auto; }
     .tm-footer-brand-mark::before, .tm-footer-brand-mark::after { content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #2D7D6E; border-radius: 999px; }
     .tm-footer-brand-mark::before { width: 16px; height: 4px; }
     .tm-footer-brand-mark::after { width: 4px; height: 16px; }
-    .tm-footer-brand-word { display: inline-flex; align-items: baseline; gap: 0; }
-    .tm-footer-brand-tide { color: #1A1F2E; }
-    .tm-footer-brand-medix { color: #2D7D6E; }
+    .tm-footer-brand-word { display: inline-flex; align-items: baseline; gap: 0; color: #1A1F2E; }
+    .tm-footer-brand-tide { color: inherit; font-weight: 900; }
+    .tm-footer-brand-medix { color: inherit; font-weight: 500; }
     .tm-footer-copy { margin: 12px 0 0; color: #5A6670; line-height: 1.55; font-size: 14px; max-width: 440px; }
     .tm-legitscript-badge { display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin-top: 16px; padding: 8px 11px; border: 1px solid #E5EAE8; border-radius: 999px; background: #F7F9F8; color: #1F5D52; text-decoration: none; font-size: 12px; font-weight: 800; letter-spacing: .02em; }
     .tm-legitscript-badge::before { content: "✓"; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #2D7D6E; color: #fff; font-size: 11px; }
@@ -136,7 +136,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .tm-footer-col a:hover { color: #1F5D52; }
     .tm-footer-legal { border-top: 1px solid #E5EAE8; padding: 18px 0 24px; color: #69737A; font-size: 12px; line-height: 1.55; }
     @media (max-width: 980px) { .tm-footer-main { grid-template-columns: 1fr; } }
-    @media (max-width: 560px) { .tm-footer-wrap { width: min(100% - 32px, 1120px); } .tm-footer-brand { font-size: 15px; letter-spacing: .14em; gap: 8px; } .tm-footer-brand-mark { width: 30px; height: 30px; border-radius: 10px; } }
+    @media (max-width: 560px) { .tm-footer-wrap { width: min(100% - 32px, 1120px); } .tm-footer-brand { font-size: 15px; letter-spacing: .055em; gap: 8px; } .tm-footer-brand-mark { width: 30px; height: 30px; border-radius: 10px; } }
   
 
   
@@ -165,7 +165,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KB567HCV"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
-<div class="header"><div class="header-inner"><a href="./"><span class="header-logo"><img class="brand-logo-img" src="assets/Logo.png" alt="" aria-hidden="true">TIDEMEDIX</span></a><div class="header-note">Secure telehealth assessment</div></div></div>
+<div class="header"><div class="header-inner"><a href="./"><span class="header-logo"><img class="brand-logo-img" src="assets/Logo.png" alt="" aria-hidden="true"><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></span></a><div class="header-note">Secure telehealth assessment</div></div></div>
 <section class="page-hero"><div class="hero-container"><div class="eyebrow">TideMedix support</div><h1>Contact TideMedix</h1><p class="subtitle">We're here to help with assessment, order, and care-support questions.</p></div></section>
 <div class="container">
 <a href="./" class="back-link">← Back to Home</a>
