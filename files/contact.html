@@ -102,6 +102,9 @@
     footer { background: #fff; border-top: 1px solid var(--border); }
     .footer-main { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 26px; padding: 38px 0 30px; }
     .footer-main p { margin: 12px 0 0; color: var(--muted); line-height: 1.55; font-size: 14px; max-width: 440px; }
+    .legitscript-footer-badge { display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin-top: 16px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--soft); color: var(--primary-dark); font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+    .legitscript-footer-badge::before { content: "✓"; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; }
+    .legitscript-footer-badge:hover { border-color: var(--primary); background: var(--soft-strong); }
     .footer-col h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
     .footer-col a { display: block; margin: 9px 0; color: var(--ink); font-size: 14px; font-weight: 600; }
     .footer-col a:hover { color: var(--primary-dark); }
@@ -206,6 +209,7 @@
       <div>
         <a class="brand" href="../index.html" aria-label="TideMedix home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a>
         <p>Modern prescription wellness with online assessment, provider review, and clear next steps when treatment is clinically appropriate.</p>
+        <a class="legitscript-footer-badge" href="https://www.legitscript.com/websites/tidemedix.com/" target="_blank" rel="noopener noreferrer">LegitScript Certified</a>
       </div>
       <div class="footer-col">
         <h3>Care</h3>
