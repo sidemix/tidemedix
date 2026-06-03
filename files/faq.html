@@ -1,159 +1,272 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FAQ - Tidemedix</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, sans-serif; background: #111827; color: #e2e8f0; line-height: 1.7; }
-  .header { background: linear-gradient(135deg, #0d9488, #06b6d4); padding: 14px 20px; display: flex; align-items: center; justify-content: center; }
-  .header a { text-decoration: none; }
-  .header-logo { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 2px; }
-  .container { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
-  h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
-  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
-  h2 { font-size: 16px; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 1px; margin: 32px 0 16px; }
-  p { font-size: 14px; color: #94a3b8; margin-bottom: 14px; }
-  a { color: #0d9488; }
-  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #0d9488; text-decoration: none; margin-bottom: 24px; }
-  .back-link:hover { text-decoration: underline; }
-  .faq-item { border-bottom: 1px solid rgba(255,255,255,0.08); }
-  .faq-q { padding: 18px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #fff; gap: 16px; }
-  .faq-q:hover { color: #0d9488; }
-  .faq-arrow { font-size: 18px; color: #64748b; transition: transform 0.2s; flex-shrink: 0; }
-  .faq-a { display: none; padding: 0 0 18px; font-size: 14px; color: #94a3b8; line-height: 1.7; }
-  .faq-item.open .faq-a { display: block; }
-  .faq-item.open .faq-arrow { transform: rotate(180deg); }
-  .cta-card { background: linear-gradient(135deg, rgba(13,148,136,0.15), rgba(6,182,212,0.1)); border: 1px solid rgba(13,148,136,0.25); border-radius: 16px; padding: 28px; text-align: center; margin-top: 40px; }
-  .cta-card h3 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-  .cta-card p { font-size: 14px; color: #94a3b8; margin-bottom: 16px; }
-  .cta-btn { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #0d9488, #0e7490); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; text-decoration: none; letter-spacing: 0.3px; }
-  .footer { background: #0a0e17; padding: 32px 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.06); }
-  .footer-logo { font-size: 18px; font-weight: 800; color: #0d9488; letter-spacing: 2px; margin-bottom: 6px; }
-  .footer-tagline { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
-  .footer-links { display: flex; gap: 20px; justify-content: center; margin-bottom: 16px; }
-  .footer-links a { font-size: 13px; color: #64748b; text-decoration: none; }
-  .footer-links a:hover { color: #0d9488; }
-  .footer-copy { font-size: 11px; color: #64748b; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAQ | TideMedix</title>
+  <meta name="description" content="Frequently asked questions about TideMedix online assessment, provider review, GLP-1 weight care, pricing, shipping, and support." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --canvas: #ffffff;
+      --soft: #F7F9F8;
+      --soft-strong: #EDF3F1;
+      --primary: #2D7D6E;
+      --primary-dark: #1F5D52;
+      --ink: #1A1F2E;
+      --muted: #5A6670;
+      --border: #E5EAE8;
+      --border-strong: #C9D2CF;
+      --warning-bg: #FBF1E7;
+      --warning-border: #F0DEC9;
+      --warning-text: #6C4A2E;
+      --shadow-sm: 0 1px 2px rgba(26, 31, 46, 0.05);
+      --shadow-md: 0 12px 32px rgba(26, 31, 46, 0.10);
+      --wrap: min(1120px, calc(100% - 40px));
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { width: var(--wrap); margin: 0 auto; }
+    .announcement { background: var(--ink); color: #fff; font-size: 13px; line-height: 1.4; text-align: center; padding: 10px 18px; }
+    .announcement strong { font-weight: 700; }
+    .site-header { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.88); border-bottom: 1px solid rgba(229,234,232,.86); backdrop-filter: blur(18px); }
+    .nav { height: 74px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 800; letter-spacing: 0.18em; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 12px; background: var(--soft-strong); position: relative; flex: 0 0 auto; }
+    .brand-mark::before, .brand-mark::after { content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: var(--primary); border-radius: 999px; }
+    .brand-mark::before { width: 16px; height: 4px; }
+    .brand-mark::after { width: 4px; height: 16px; }
+    .brand-word { display: inline-flex; align-items: baseline; gap: 0; }
+    .brand-tide { color: var(--ink); }
+    .brand-medix { color: var(--primary); }
+    .nav-links { display: flex; align-items: center; gap: 26px; color: var(--muted); font-size: 14px; font-weight: 600; }
+    .nav-links a:hover { color: var(--ink); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border-radius: 12px; border: 1px solid transparent; font-size: 15px; font-weight: 700; letter-spacing: .005em; white-space: nowrap; cursor: pointer; font-family: inherit; transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease; }
+    .btn-primary { background: var(--ink); color: #fff; }
+    .btn-primary:hover { background: #2D3548; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn-secondary { background: #fff; color: var(--ink); border-color: var(--border-strong); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary-dark); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--primary-dark); font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+    .hero { background: radial-gradient(circle at 16% 18%, rgba(45,125,110,.08), transparent 32%), linear-gradient(180deg, #fff 0%, var(--soft) 100%); border-bottom: 1px solid var(--border); }
+    .hero-inner { padding: clamp(58px, 8vw, 96px) 0 56px; max-width: 820px; }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 28px; color: var(--primary-dark); font-size: 14px; font-weight: 700; }
+    h1 { margin: 0; font-size: clamp(40px, 6vw, 68px); line-height: .96; letter-spacing: -0.06em; max-width: 820px; }
+    .lead { margin: 20px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); line-height: 1.58; max-width: 720px; }
+    .section { padding: 70px 0; }
+    .faq-layout { display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start; }
+    .sidebar { position: sticky; top: 104px; border: 1px solid var(--border); border-radius: 24px; background: #fff; box-shadow: var(--shadow-sm); padding: 18px; }
+    .sidebar h2 { margin: 0 0 12px; color: var(--muted); font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .sidebar a { display: block; padding: 11px 12px; border-radius: 12px; color: var(--ink); font-size: 14px; font-weight: 700; }
+    .sidebar a:hover { background: var(--soft-strong); color: var(--primary-dark); }
+    .faq-content { display: grid; gap: 22px; }
+    .faq-section { border: 1px solid var(--border); border-radius: 26px; background: #fff; box-shadow: var(--shadow-sm); overflow: hidden; }
+    .faq-section-head { padding: 24px 26px 10px; }
+    .faq-section-head h2 { margin: 0; font-size: 24px; letter-spacing: -0.03em; }
+    .faq-item { border-top: 1px solid var(--border); }
+    .faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 20px 26px; border: 0; background: transparent; color: var(--ink); text-align: left; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
+    .faq-q:hover { color: var(--primary-dark); }
+    .faq-arrow { width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: var(--soft-strong); color: var(--primary-dark); transition: rotate 160ms ease; }
+    .faq-a { display: none; padding: 0 26px 22px; color: var(--muted); font-size: 15px; line-height: 1.68; }
+    .faq-a a { color: var(--primary-dark); font-weight: 800; }
+    .faq-item.open .faq-a { display: block; }
+    .faq-item.open .faq-arrow { rotate: 180deg; }
+    .disclaimer { margin-top: 22px; padding: 18px 20px; border-radius: 18px; border: 1px solid var(--warning-border); background: var(--warning-bg); color: var(--warning-text); font-size: 13px; line-height: 1.55; }
+    .cta-card { margin-top: 4px; padding: clamp(28px, 5vw, 44px); border-radius: 30px; background: var(--ink); color: #fff; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; box-shadow: var(--shadow-md); }
+    .cta-card h2 { margin: 0 0 8px; color: #fff; font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.04em; }
+    .cta-card p { margin: 0; color: rgba(255,255,255,.72); line-height: 1.58; }
+    footer { background: #fff; border-top: 1px solid var(--border); }
+    .footer-main { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 26px; padding: 38px 0 30px; }
+    .footer-main p { margin: 12px 0 0; color: var(--muted); line-height: 1.55; font-size: 14px; max-width: 440px; }
+    .footer-col h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .footer-col a { display: block; margin: 9px 0; color: var(--ink); font-size: 14px; font-weight: 600; }
+    .footer-col a:hover { color: var(--primary-dark); }
+    .footer-legal { border-top: 1px solid var(--border); padding: 18px 0 24px; color: #69737A; font-size: 12px; line-height: 1.55; }
+    @media (max-width: 980px) { .nav-links { display: none; } .faq-layout, .footer-main, .cta-card { grid-template-columns: 1fr; } .sidebar { position: static; } }
+    @media (max-width: 560px) { :root { --wrap: min(100% - 32px, 1120px); } .announcement { font-size: 12px; } .nav { height: 68px; } .brand { font-size: 15px; letter-spacing: .14em; gap: 8px; } .brand-mark { width: 30px; height: 30px; border-radius: 10px; } .nav .btn { min-height: 42px; padding: 0 14px; font-size: 13px; } .hero-inner { padding: 42px 0 44px; } .section { padding: 48px 0; } .faq-section-head, .faq-q, .faq-a { padding-left: 18px; padding-right: 18px; } .cta-card .btn { width: 100%; } }
+  </style>
 </head>
 <body>
-<div class="header"><a href="../index.html"><span class="header-logo">TIDEMEDIX</span></a></div>
-<div class="container">
-<a href="../index.html" class="back-link">← Back to Home</a>
+  <div class="announcement"><strong>Prescription treatment only after provider evaluation.</strong> Online assessment available for GLP-1 weight care.</div>
 
-<h1>Frequently Asked Questions</h1>
-<p class="subtitle">Everything you need to know about TideMedix</p>
+  <header class="site-header">
+    <div class="wrap nav">
+      <a class="brand" href="../index.html" aria-label="TideMedix home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="../index.html#treatments">Treatments</a>
+        <a href="../index.html#how">How it works</a>
+        <a href="../index.html#safety">Safety</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+      <a class="btn btn-primary" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+    </div>
+  </header>
 
-<h2>Getting Started</h2>
+  <main>
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <a href="../index.html" class="back-link">← Back to home</a>
+        <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Frequently asked questions</div>
+        <h1>Clear answers before you start.</h1>
+        <p class="lead">Learn how TideMedix handles online assessment, licensed provider review, GLP-1 weight care options, pricing, shipping, and support.</p>
+      </div>
+    </section>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How does TideMedix work?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">TideMedix connects you with licensed physicians for prescription weight management — all online. You complete a 2-minute health assessment quiz, a board-certified physician reviews your information (usually the same day), and if approved, your medication is shipped free to your door within 2–3 business days. No office visit required.</div>
-</div>
+    <section class="section">
+      <div class="wrap faq-layout">
+        <aside class="sidebar" aria-label="FAQ sections">
+          <h2>Sections</h2>
+          <a href="#getting-started">Getting started</a>
+          <a href="#medications">Medications & safety</a>
+          <a href="#pricing">Pricing & billing</a>
+          <a href="#shipping">Shipping & delivery</a>
+          <a href="#support">Support</a>
+        </aside>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How long does the process take?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">The health assessment takes about 2 minutes. A licensed physician typically reviews your information the same day. Once approved, your medication ships via 2-day delivery. Most patients receive their medication within 2–5 business days of completing the quiz.</div>
-</div>
+        <div class="faq-content">
+          <section class="faq-section" id="getting-started">
+            <div class="faq-section-head"><h2>Getting started</h2></div>
+            <div class="faq-item open">
+              <button class="faq-q" type="button">How does TideMedix work?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">TideMedix starts with a private online assessment. You share your goals, health history, and eligibility information. A licensed provider reviews your information before treatment is considered, and medication is only prescribed if clinically appropriate.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">How long does the process take?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">The assessment is designed to be quick and focused. Provider review timing can vary based on your information and the care workflow. If treatment is prescribed, fulfillment and shipping timing will be shown through the checkout and patient process.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">Do I need insurance?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">TideMedix plans are designed as a direct-pay path. You can review available plan details before completing checkout. Insurance coverage is not required to start the online assessment.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">Is a prescription guaranteed?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">No. Treatment is not guaranteed. A licensed provider independently reviews your assessment and determines whether a prescription is clinically appropriate.</div>
+            </div>
+          </section>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">Do I need insurance?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">No. TideMedix plans are self-pay and do not require insurance. Everything is included in your monthly price — medication, physician evaluation, ongoing support, and free 2-day shipping.</div>
-</div>
+          <section class="faq-section" id="medications">
+            <div class="faq-section-head"><h2>Medications & safety</h2></div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">What GLP-1 paths does TideMedix show?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">TideMedix currently presents GLP-1 weight care paths including Semaglutide and Tirzepatide options, with oral pill and injection-shot paths shown for education and assessment routing. Availability and appropriateness are determined through provider review.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">How do I know this is safe?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">TideMedix is built around online assessment, compliance-minded education, and licensed provider review before treatment decisions. Your complete health history matters, and not every person is a fit for GLP-1 medication.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">What are potential side effects?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">Common side effects of GLP-1 medications may include nausea, vomiting, diarrhea, constipation, and stomach discomfort, especially when starting treatment. Your provider should discuss risks, contraindications, and monitoring with you if treatment is prescribed.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">Who should not use these medications?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">GLP-1 medications may not be appropriate for people who are pregnant or breastfeeding, have certain thyroid cancer risks, have Multiple Endocrine Neoplasia syndrome type 2, have a history of pancreatitis, have Type 1 diabetes, or have other health factors a provider determines are unsafe.</div>
+            </div>
+          </section>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">Is a prescription guaranteed?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">No. A licensed physician independently reviews your health information and makes the final determination on whether a prescription is appropriate for you. If a prescription is not approved, you will receive a full refund.</div>
-</div>
+          <section class="faq-section" id="pricing">
+            <div class="faq-section-head"><h2>Pricing & billing</h2></div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">How much does it cost?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">Current plan options and pricing are shown during the assessment and checkout process. Pricing may vary by product path, plan length, and fulfillment option.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">Are there hidden fees?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">TideMedix is designed to show plan details before checkout so you can review the path before purchasing. Always review the checkout terms for the exact plan, billing timing, and what is included.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">Can I cancel anytime?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">For account, subscription, or billing help, contact support at <a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a> or call <a href="tel:+18333655589">+1 (833) 365-5589</a>. The support team can help with the options available for your plan.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">What is your refund policy?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">Refund handling can depend on provider review, order status, fulfillment status, and the specific plan terms. If you need help with a refund request, contact support so the team can review your case.</div>
+            </div>
+          </section>
 
-<h2>Medications & Safety</h2>
+          <section class="faq-section" id="shipping">
+            <div class="faq-section-head"><h2>Shipping & delivery</h2></div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">How fast is shipping?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">If medication is prescribed, shipping timing depends on provider review, pharmacy processing, and fulfillment. Delivery details are provided through the patient/order process.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">Do you ship to all 50 states?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">Availability may vary based on state telehealth rules, provider availability, and pharmacy fulfillment requirements. Your assessment and checkout flow will help confirm whether your location is eligible.</div>
+            </div>
+          </section>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">What medications does TideMedix offer?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">TideMedix offers physician-prescribed weight management medications including Semaglutide (starting at $149/month) and Tirzepatide (starting at $249/month). Both contain FDA-approved active ingredients and are prescribed by board-certified physicians based on your individual health profile.</div>
-</div>
+          <section class="faq-section" id="support">
+            <div class="faq-section-head"><h2>Support</h2></div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">How do I contact support?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">You can reach support by email at <a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a>, by phone at <a href="tel:+18333655589">+1 (833) 365-5589</a>, or through the <a href="contact.html">contact page</a>.</div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-q" type="button">How do I refill or adjust a prescription?<span class="faq-arrow">⌄</span></button>
+              <div class="faq-a">If you are already a patient, follow the instructions in your patient/order process or contact support. Dose changes, refills, and ongoing treatment questions should be handled through the appropriate provider or patient support channel.</div>
+            </div>
+          </section>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How do I know this is safe?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">All prescriptions are reviewed and approved by board-certified, US-licensed physicians. Medications are dispensed by accredited pharmacies. TideMedix is LegitScript-certified, which is an independent third-party verification of compliance with pharmacy and healthcare regulations. Your health information is encrypted and HIPAA-protected.</div>
-</div>
+          <div class="disclaimer">Treatment is not guaranteed. Final eligibility is determined by a licensed provider after review. This FAQ is informational and does not replace medical advice.</div>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">What are the potential side effects?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">Common side effects of GLP-1 medications may include nausea, vomiting, diarrhea, constipation, and stomach pain, particularly when starting treatment. These often decrease over time. Your prescribing physician will discuss potential side effects with you and monitor your treatment. Contact your physician immediately if you experience severe or persistent side effects.</div>
-</div>
+          <section class="cta-card" aria-labelledby="faq-cta-heading">
+            <div>
+              <h2 id="faq-cta-heading">Ready to start?</h2>
+              <p>Begin with the private online assessment and let provider review determine whether treatment may be appropriate.</p>
+            </div>
+            <a class="btn btn-secondary" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
 
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">Who should NOT use these medications?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">GLP-1 medications may not be appropriate for individuals who are pregnant or breastfeeding, have a personal or family history of medullary thyroid carcinoma, have Multiple Endocrine Neoplasia syndrome type 2 (MEN 2), have a history of pancreatitis, or have Type 1 diabetes. Your physician will evaluate your eligibility based on your complete health history.</div>
-</div>
+  <footer>
+    <div class="wrap footer-main">
+      <div>
+        <a class="brand" href="../index.html" aria-label="TideMedix home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a>
+        <p>Modern prescription wellness with online assessment, provider review, and clear next steps when treatment is clinically appropriate.</p>
+      </div>
+      <div class="footer-col">
+        <h3>Care</h3>
+        <a href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+        <a href="../index.html#treatments">Treatment paths</a>
+        <a href="../index.html#how">How it works</a>
+      </div>
+      <div class="footer-col">
+        <h3>Information</h3>
+        <a href="faq.html">FAQ</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms Of Use</a>
+        <a href="returns-refund-policy.html">Returns & Refund</a>
+        <a href="hipaa.html">HIPAA Notice</a>
+      </div>
+    </div>
+    <div class="wrap footer-legal">TideMedix does not guarantee treatment approval or outcomes. This site is informational and does not replace medical advice.</div>
+  </footer>
 
-<h2>Pricing & Billing</h2>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How much does it cost?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">Semaglutide plans start at $149/month. Tirzepatide plans start at $249/month. Both include medication, physician evaluation, ongoing medical support, and free 2-day shipping. No hidden fees. Multi-month plans are available at a reduced monthly rate.</div>
-</div>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">Are there any hidden fees?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">No. Your monthly price includes everything — medication, physician review, support, and shipping. There are no enrollment fees, membership fees, or surprise charges.</div>
-</div>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">Can I cancel anytime?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">Yes. There are no contracts or cancellation fees for month-to-month plans. You can cancel your subscription at any time by contacting our support team at support@trytidemedix.com or calling +1 (833) 365-5589.</div>
-</div>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">What is your refund policy?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">If your prescription is not approved by the reviewing physician, you will receive a full refund. For other refund requests, please contact our support team. Refunds for shipped medication are handled on a case-by-case basis.</div>
-</div>
-
-<h2>Shipping & Delivery</h2>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How fast is shipping?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">We offer free 2-day shipping on all orders. Most patients receive their medication within 2–5 business days of completing the health assessment and receiving physician approval. Medications are shipped in discreet packaging.</div>
-</div>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">Do you ship to all 50 states?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">We ship to most U.S. states. Availability may vary based on state telehealth regulations. During the checkout process, you'll select your state and we'll confirm eligibility for your location.</div>
-</div>
-
-<h2>Support</h2>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How do I contact support?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">You can reach our support team by email at <a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a> or by phone at <a href="tel:+18333655589">+1 (833) 365-5589</a> (Monday–Friday, 9am–6pm EST). You can also use our <a href="./contact.html">contact form</a>.</div>
-</div>
-
-<div class="faq-item" onclick="this.classList.toggle('open')">
-  <div class="faq-q">How do I refill my prescription?<span class="faq-arrow">▼</span></div>
-  <div class="faq-a">If you're on a monthly subscription, your medication ships automatically each month. If you need to adjust your dosage or have questions about your treatment, contact your physician through the patient portal or reach out to our support team.</div>
-</div>
-
-<div class="cta-card">
-  <h3>Ready to get started?</h3>
-  <p>Take the 2-minute health assessment to see if you qualify for physician-prescribed weight management.</p>
-  <a href="./" class="cta-btn">See If You Qualify →</a>
-</div>
-
-</div>
-<div class="footer">
-  <div class="footer-logo">TIDEMEDIX</div>
-  <div class="footer-tagline">Prescription wellness, delivered</div>
-  <div class="footer-links">
-    <a href="./privacy.html">Privacy</a>
-    <a href="./terms.html">Terms</a>
-    <a href="./contact.html">Contact</a>
-    <a href="./faq.html">FAQ</a>
-  </div>
-  <div class="footer-copy">© 2026 Tidemedix. All rights reserved.</div>
-</div>
+  <script>
+    document.querySelectorAll('.faq-q').forEach(function(button){
+      button.addEventListener('click', function(){
+        button.closest('.faq-item').classList.toggle('open');
+      });
+    });
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+      const utmKeys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','clickid','affId'];
+      document.querySelectorAll('[data-cta]').forEach(function(link){
+        const url = new URL(link.href);
+        utmKeys.forEach(function(key){ const val = params.get(key) || localStorage.getItem(key); if(val) url.searchParams.set(key,val); });
+        link.href = url.toString();
+      });
+      utmKeys.forEach(function(key){ const val = params.get(key); if(val) localStorage.setItem(key,val); });
+    })();
+  </script>
 </body>
 </html>

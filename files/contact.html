@@ -1,139 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contact Us - Tidemedix</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, sans-serif; background: #111827; color: #e2e8f0; line-height: 1.7; }
-  .header { background: linear-gradient(135deg, #0d9488, #06b6d4); padding: 14px 20px; display: flex; align-items: center; justify-content: center; }
-  .header a { text-decoration: none; }
-  .header-logo { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 2px; }
-  .container { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
-  h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
-  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
-  h2 { font-size: 18px; font-weight: 700; color: #fff; margin: 28px 0 12px; }
-  p { font-size: 14px; color: #94a3b8; margin-bottom: 14px; }
-  a { color: #0d9488; }
-  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #0d9488; text-decoration: none; margin-bottom: 24px; }
-  .back-link:hover { text-decoration: underline; }
-  .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 24px; margin-bottom: 16px; }
-  .card-icon { font-size: 24px; margin-bottom: 10px; }
-  .card-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px; }
-  .card-text { font-size: 14px; color: #94a3b8; }
-  .card-text a { color: #0d9488; text-decoration: none; font-weight: 600; }
-  .card-text a:hover { text-decoration: underline; }
-  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
-  .input-group { margin-bottom: 16px; }
-  .input-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
-  .input { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.12); border-radius: 12px; font-size: 16px; color: #fff; outline: none; font-family: inherit; }
-  .input::placeholder { color: #4a5568; }
-  .input:focus { border-color: rgba(13,148,136,0.4); }
-  textarea.input { min-height: 120px; resize: vertical; }
-  .btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #0d9488, #0e7490); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; letter-spacing: 0.3px; }
-  .btn:active { transform: scale(0.98); }
-  .row { display: flex; gap: 12px; }
-  .hipaa { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: rgba(13,148,136,0.08); border: 1px solid rgba(13,148,136,0.15); border-radius: 10px; margin-top: 14px; font-size: 12px; color: #0d9488; font-weight: 500; }
-  .footer { background: #0a0e17; padding: 32px 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.06); }
-  .footer-logo { font-size: 18px; font-weight: 800; color: #0d9488; letter-spacing: 2px; margin-bottom: 6px; }
-  .footer-tagline { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
-  .footer-links { display: flex; gap: 20px; justify-content: center; margin-bottom: 16px; }
-  .footer-links a { font-size: 13px; color: #64748b; text-decoration: none; }
-  .footer-links a:hover { color: #0d9488; }
-  .footer-copy { font-size: 11px; color: #64748b; }
-  @media (max-width: 500px) { .contact-grid { grid-template-columns: 1fr; } .row { flex-direction: column; } }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact | TideMedix</title>
+  <meta name="description" content="Contact TideMedix support for questions about online assessment, provider review, orders, or prescription wellness care." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --canvas: #ffffff;
+      --soft: #F7F9F8;
+      --soft-strong: #EDF3F1;
+      --primary: #2D7D6E;
+      --primary-dark: #1F5D52;
+      --ink: #1A1F2E;
+      --muted: #5A6670;
+      --border: #E5EAE8;
+      --border-strong: #C9D2CF;
+      --success: #2D7D6E;
+      --shadow-sm: 0 1px 2px rgba(26, 31, 46, 0.05);
+      --shadow-md: 0 12px 32px rgba(26, 31, 46, 0.10);
+      --wrap: min(1120px, calc(100% - 40px));
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      background: var(--canvas);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { width: var(--wrap); margin: 0 auto; }
+    .announcement {
+      background: var(--ink);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: center;
+      padding: 10px 18px;
+    }
+    .announcement strong { font-weight: 700; }
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom: 1px solid rgba(229, 234, 232, 0.86);
+      backdrop-filter: blur(18px);
+    }
+    .nav { height: 74px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 800; letter-spacing: 0.18em; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 12px; background: var(--soft-strong); position: relative; flex: 0 0 auto; }
+    .brand-mark::before, .brand-mark::after { content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: var(--primary); border-radius: 999px; }
+    .brand-mark::before { width: 16px; height: 4px; }
+    .brand-mark::after { width: 4px; height: 16px; }
+    .brand-word { display: inline-flex; align-items: baseline; gap: 0; }
+    .brand-tide { color: var(--ink); }
+    .brand-medix { color: var(--primary); }
+    .nav-links { display: flex; align-items: center; gap: 26px; color: var(--muted); font-size: 14px; font-weight: 600; }
+    .nav-links a:hover { color: var(--ink); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border-radius: 12px; border: 1px solid transparent; font-size: 15px; font-weight: 700; letter-spacing: 0.005em; white-space: nowrap; cursor: pointer; font-family: inherit; transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease; }
+    .btn-primary { background: var(--ink); color: #fff; }
+    .btn-primary:hover { background: #2D3548; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn-secondary { background: #fff; border-color: var(--border-strong); color: var(--ink); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary-dark); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--primary-dark); font-size: 13px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+    .hero { background: radial-gradient(circle at 16% 18%, rgba(45, 125, 110, .08), transparent 32%), linear-gradient(180deg, #fff 0%, var(--soft) 100%); border-bottom: 1px solid var(--border); }
+    .hero-inner { padding: clamp(58px, 8vw, 96px) 0 56px; max-width: 780px; }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 28px; color: var(--primary-dark); font-size: 14px; font-weight: 700; }
+    h1 { margin: 0; font-size: clamp(40px, 6vw, 68px); line-height: .96; letter-spacing: -0.06em; max-width: 760px; }
+    .lead { margin: 20px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); line-height: 1.58; max-width: 690px; }
+    .section { padding: 70px 0; }
+    .contact-layout { display: grid; grid-template-columns: .92fr 1.08fr; gap: 24px; align-items: start; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .info-card, .form-card, .notice-card { border: 1px solid var(--border); border-radius: 24px; background: #fff; box-shadow: var(--shadow-sm); }
+    .info-card { padding: 22px; }
+    .icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: var(--soft-strong); color: var(--primary-dark); font-weight: 800; margin-bottom: 16px; }
+    .info-card h2 { margin: 0 0 8px; font-size: 18px; letter-spacing: -0.02em; }
+    .info-card p, .info-card a { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .info-card a { color: var(--primary-dark); font-weight: 700; }
+    .form-card { padding: clamp(22px, 4vw, 34px); }
+    .form-card h2 { margin: 0 0 8px; font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.04em; }
+    .form-card p { margin: 0 0 24px; color: var(--muted); line-height: 1.58; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .input-group { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 7px; color: var(--ink); font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    input, textarea { width: 100%; padding: 14px 15px; border: 1px solid var(--border-strong); border-radius: 14px; background: #fff; color: var(--ink); font: inherit; outline: none; transition: border-color 150ms ease, box-shadow 150ms ease; }
+    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(45,125,110,.12); }
+    textarea { min-height: 132px; resize: vertical; }
+    .form-card .btn { width: 100%; margin-top: 6px; border: 0; }
+    .security-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--soft); color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .success-msg { display: none; margin-top: 18px; padding: 16px; border: 1px solid rgba(45,125,110,.24); border-radius: 16px; background: rgba(45,125,110,.08); color: var(--primary-dark); font-weight: 700; text-align: center; }
+    .notice-card { margin-top: 18px; padding: 22px; background: var(--soft); }
+    .notice-card h2 { margin: 0 0 8px; font-size: 18px; }
+    .notice-card p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+    footer { background: #fff; border-top: 1px solid var(--border); }
+    .footer-main { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 26px; padding: 38px 0 30px; }
+    .footer-main p { margin: 12px 0 0; color: var(--muted); line-height: 1.55; font-size: 14px; max-width: 440px; }
+    .footer-col h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .footer-col a { display: block; margin: 9px 0; color: var(--ink); font-size: 14px; font-weight: 600; }
+    .footer-col a:hover { color: var(--primary-dark); }
+    .footer-legal { border-top: 1px solid var(--border); padding: 18px 0 24px; color: #69737A; font-size: 12px; line-height: 1.55; }
+    @media (max-width: 900px) { .nav-links { display: none; } .contact-layout, .footer-main { grid-template-columns: 1fr; } .info-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { :root { --wrap: min(100% - 32px, 1120px); } .announcement { font-size: 12px; } .nav { height: 68px; } .brand { font-size: 15px; letter-spacing: .14em; gap: 8px; } .brand-mark { width: 30px; height: 30px; border-radius: 10px; } .nav .btn { min-height: 42px; padding: 0 14px; font-size: 13px; } .hero-inner { padding: 42px 0 44px; } .info-grid, .row { grid-template-columns: 1fr; } .section { padding: 48px 0; } }
+  </style>
 </head>
 <body>
-<div class="header"><a href="../index.html"><span class="header-logo">TIDEMEDIX</span></a></div>
-<div class="container">
-<a href="../index.html" class="back-link">← Back to Home</a>
+  <div class="announcement"><strong>Prescription treatment only after provider evaluation.</strong> Online assessment available for GLP-1 weight care.</div>
 
-<h1>Contact Us</h1>
-<p class="subtitle">We're here to help. Reach out anytime.</p>
+  <header class="site-header">
+    <div class="wrap nav">
+      <a class="brand" href="../index.html" aria-label="TideMedix home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="../index.html#treatments">Treatments</a>
+        <a href="../index.html#how">How it works</a>
+        <a href="../index.html#safety">Safety</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <a class="btn btn-primary" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+    </div>
+  </header>
 
-<div class="contact-grid">
-  <div class="card">
-    <div class="card-icon">📧</div>
-    <div class="card-title">Email</div>
-    <div class="card-text"><a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a></div>
-  </div>
-  <div class="card">
-    <div class="card-icon">📞</div>
-    <div class="card-title">Phone</div>
-    <div class="card-text"><a href="tel:+18333655589">+1 (833) 365-5589</a></div>
-  </div>
-  <div class="card">
-    <div class="card-icon">📍</div>
-    <div class="card-title">Address</div>
-    <div class="card-text">5255 Office Park Blvd<br>Suite 107<br>Bradenton, FL 34203</div>
-  </div>
-  <div class="card">
-    <div class="card-icon">🕐</div>
-    <div class="card-title">Hours</div>
-    <div class="card-text">Mon – Fri: 9am – 6pm EST<br>Sat – Sun: Closed</div>
-  </div>
-</div>
+  <main>
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <a href="../index.html" class="back-link">← Back to home</a>
+        <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Contact TideMedix</div>
+        <h1>Questions about your next step?</h1>
+        <p class="lead">Reach our support team for help with the assessment, provider review process, orders, billing, or general TideMedix questions.</p>
+      </div>
+    </section>
 
-<h2>Send Us a Message</h2>
-<p>Have a question about our services, your order, or your treatment plan? Fill out the form below and we'll get back to you within 24 hours.</p>
+    <section class="section">
+      <div class="wrap contact-layout">
+        <div>
+          <div class="info-grid">
+            <article class="info-card">
+              <div class="icon">@</div>
+              <h2>Email</h2>
+              <p><a href="mailto:support@trytidemedix.com">support@trytidemedix.com</a></p>
+            </article>
+            <article class="info-card">
+              <div class="icon">☎</div>
+              <h2>Phone</h2>
+              <p><a href="tel:+18333655589">+1 (833) 365-5589</a></p>
+            </article>
+            <article class="info-card">
+              <div class="icon">⌂</div>
+              <h2>Address</h2>
+              <p>5255 Office Park Blvd<br>Suite 107<br>Bradenton, FL 34203</p>
+            </article>
+            <article class="info-card">
+              <div class="icon">◷</div>
+              <h2>Hours</h2>
+              <p>Monday–Friday<br>9am–6pm ET</p>
+            </article>
+          </div>
 
-<div class="row">
-  <div class="input-group" style="flex:1">
-    <label class="input-label">First Name</label>
-    <input class="input" placeholder="First name" id="c-first">
-  </div>
-  <div class="input-group" style="flex:1">
-    <label class="input-label">Last Name</label>
-    <input class="input" placeholder="Last name" id="c-last">
-  </div>
-</div>
-<div class="input-group">
-  <label class="input-label">Email</label>
-  <input class="input" type="email" placeholder="you@email.com" id="c-email">
-</div>
-<div class="input-group">
-  <label class="input-label">Subject</label>
-  <input class="input" placeholder="How can we help?" id="c-subject">
-</div>
-<div class="input-group">
-  <label class="input-label">Message</label>
-  <textarea class="input" placeholder="Tell us more..." id="c-message"></textarea>
-</div>
-<button class="btn" onclick="submitContact()">Send Message</button>
-<div class="hipaa">🔒 Your information is encrypted and HIPAA-protected</div>
+          <div class="notice-card">
+            <h2>Medical emergency?</h2>
+            <p>If you are experiencing a medical emergency, call emergency services immediately. TideMedix support cannot provide emergency care through this form.</p>
+          </div>
+        </div>
 
-<div id="success-msg" style="display:none; margin-top:20px; padding:16px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); border-radius:12px; text-align:center;">
-  <div style="font-size:24px; margin-bottom:8px;">✅</div>
-  <div style="font-size:16px; font-weight:700; color:#fff; margin-bottom:4px;">Message sent!</div>
-  <div style="font-size:13px; color:#94a3b8;">We'll get back to you within 24 hours.</div>
-</div>
+        <section class="form-card" aria-labelledby="message-heading">
+          <h2 id="message-heading">Send us a message</h2>
+          <p>Tell us what you need help with and our team will get back to you as soon as possible during business hours.</p>
+          <div class="row">
+            <div class="input-group">
+              <label for="c-first">First name</label>
+              <input id="c-first" autocomplete="given-name" placeholder="First name">
+            </div>
+            <div class="input-group">
+              <label for="c-last">Last name</label>
+              <input id="c-last" autocomplete="family-name" placeholder="Last name">
+            </div>
+          </div>
+          <div class="input-group">
+            <label for="c-email">Email</label>
+            <input id="c-email" type="email" autocomplete="email" placeholder="you@email.com">
+          </div>
+          <div class="input-group">
+            <label for="c-subject">Subject</label>
+            <input id="c-subject" placeholder="How can we help?">
+          </div>
+          <div class="input-group">
+            <label for="c-message">Message</label>
+            <textarea id="c-message" placeholder="Tell us more..."></textarea>
+          </div>
+          <button class="btn btn-primary" type="button" onclick="submitContact()">Send message</button>
+          <div class="security-note"><span aria-hidden="true">🔒</span><span>Your information is handled through a private support process. Please do not use this form for emergency medical concerns.</span></div>
+          <div id="success-msg" class="success-msg">Message received. We'll get back to you during business hours.</div>
+        </section>
+      </div>
+    </section>
+  </main>
 
-</div>
-<div class="footer">
-  <div class="footer-logo">TIDEMEDIX</div>
-  <div class="footer-tagline">Prescription wellness, delivered</div>
-  <div class="footer-links">
-    <a href="./privacy.html">Privacy</a>
-    <a href="./terms.html">Terms</a>
-    <a href="./contact.html">Contact</a>
-    <a href="./faq.html">FAQ</a>
-  </div>
-  <div class="footer-copy">© 2026 Tidemedix. All rights reserved.</div>
-</div>
-<script>
-function submitContact() {
-  const f = document.getElementById('c-first').value;
-  const l = document.getElementById('c-last').value;
-  const e = document.getElementById('c-email').value;
-  if (f && l && e) {
-    document.getElementById('success-msg').style.display = 'block';
-    document.querySelector('.btn').style.display = 'none';
-    // TODO: Wire up to Resend or email endpoint
-  }
-}
-</script>
+  <footer>
+    <div class="wrap footer-main">
+      <div>
+        <a class="brand" href="../index.html" aria-label="TideMedix home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word"><span class="brand-tide">TIDE</span><span class="brand-medix">MEDIX</span></span></a>
+        <p>Modern prescription wellness with online assessment, provider review, and clear next steps when treatment is clinically appropriate.</p>
+      </div>
+      <div class="footer-col">
+        <h3>Care</h3>
+        <a href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+        <a href="../index.html#treatments">Treatment paths</a>
+        <a href="../index.html#how">How it works</a>
+      </div>
+      <div class="footer-col">
+        <h3>Information</h3>
+        <a href="faq.html">FAQ</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms Of Use</a>
+        <a href="returns-refund-policy.html">Returns & Refund</a>
+        <a href="hipaa.html">HIPAA Notice</a>
+      </div>
+    </div>
+    <div class="wrap footer-legal">TideMedix does not guarantee treatment approval or outcomes. This site is informational and does not replace medical advice.</div>
+  </footer>
+
+  <script>
+    function submitContact() {
+      const first = document.getElementById('c-first').value.trim();
+      const last = document.getElementById('c-last').value.trim();
+      const email = document.getElementById('c-email').value.trim();
+      if (first && last && email) {
+        document.getElementById('success-msg').style.display = 'block';
+        document.querySelector('.form-card button').style.display = 'none';
+      }
+    }
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+      const utmKeys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','clickid','affId'];
+      document.querySelectorAll('[data-cta]').forEach(function(link){
+        const url = new URL(link.href);
+        utmKeys.forEach(function(key){ const val = params.get(key) || localStorage.getItem(key); if(val) url.searchParams.set(key,val); });
+        link.href = url.toString();
+      });
+      utmKeys.forEach(function(key){ const val = params.get(key); if(val) localStorage.setItem(key,val); });
+    })();
+  </script>
 </body>
 </html>
