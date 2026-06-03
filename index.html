@@ -8,7 +8,7 @@
   <meta property="og:title" content="TideMedix | Modern Prescription Wellness" />
   <meta property="og:description" content="Online assessment, licensed provider review, and clear treatment next steps when clinically appropriate." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="ProductHeroImages/hero-window-woman-wide.jpeg?v=20260603-hero" />
+  <meta property="og:image" content="ProductHeroImages/hero-window-woman-portrait.png?v=20260603-portrait" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -221,8 +221,8 @@
 
     .hero-card {
       position: relative;
-      aspect-ratio: 1152 / 928;
-      min-height: 0;
+      aspect-ratio: 4 / 5;
+      min-height: 640px;
       border-radius: 34px;
       overflow: hidden;
       background: #fff;
@@ -234,44 +234,7 @@
       height: 100%;
       min-height: 0;
       object-fit: cover;
-      object-position: 62% center;
-    }
-    .hero-card::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(0deg, rgba(26,31,46,.16), rgba(26,31,46,0) 42%);
-      pointer-events: none;
-    }
-    .hero-note {
-      position: absolute;
-      z-index: 2;
-      left: 22px;
-      right: 22px;
-      bottom: 22px;
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      align-items: center;
-      padding: 16px 18px;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,.72);
-      background: rgba(255,255,255,.88);
-      backdrop-filter: blur(18px);
-      box-shadow: 0 12px 26px rgba(26,31,46,.10);
-    }
-    .hero-note small { display: block; margin-top: 4px; color: var(--muted); line-height: 1.4; }
-    .mini-plus {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      flex: 0 0 auto;
-      display: grid;
-      place-items: center;
-      background: var(--soft-strong);
-      color: var(--primary);
-      font-size: 23px;
-      font-weight: 900;
+      object-position: 58% center;
     }
 
     .section { padding: 76px 0; }
@@ -532,7 +495,8 @@
       .cta-box,
       .footer-main { grid-template-columns: 1fr; }
       .hero-grid { padding: 44px 0 54px; gap: 32px; }
-      .hero-card, .hero-card img { min-height: 380px; }
+      .hero-card { aspect-ratio: 4 / 5; min-height: 0; max-height: 720px; }
+      .hero-card img { object-position: 58% center; }
       .promise-grid, .treatment-grid, .safety-grid { grid-template-columns: 1fr; }
       .lifestyle-panel { grid-template-columns: 1fr; }
       .lifestyle-images { min-height: 300px; }
@@ -551,8 +515,8 @@
       .brand { font-size: 15px; letter-spacing: .14em; gap: 8px; }
       .brand-mark { width: 30px; height: 30px; border-radius: 10px; }
       .nav-actions .btn { min-height: 42px; padding: 0 14px; font-size: 13px; }
-      .hero-card, .hero-card img { min-height: 340px; }
-      .hero-note { left: 14px; right: 14px; bottom: 14px; padding: 14px; }
+      .hero-card { aspect-ratio: 4 / 5; }
+      .hero-card img { object-position: 58% center; }
       .hero-actions .btn { width: 100%; }
       .trust-row { display: block; }
       .trust-row span { display: block; margin-top: 6px; }
@@ -621,15 +585,8 @@
           </div>
         </div>
 
-        <aside class="hero-card" aria-label="TideMedix product image">
-          <img src="ProductHeroImages/hero-window-woman-wide.jpeg?v=20260603-hero" alt="Woman seated calmly by a sunlit window representing private online wellness care from home" />
-          <div class="hero-note">
-            <div>
-              <strong>Clinical care that fits real life.</strong>
-              <small>Simple intake. Provider review. Treatment only when appropriate.</small>
-            </div>
-            <div class="mini-plus" aria-hidden="true">+</div>
-          </div>
+        <aside class="hero-card" aria-label="TideMedix wellness image">
+          <img src="ProductHeroImages/hero-window-woman-portrait.png?v=20260603-portrait" alt="Woman seated calmly by a sunlit window representing private online wellness care from home" />
         </aside>
       </div>
     </section>
