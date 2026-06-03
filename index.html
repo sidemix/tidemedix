@@ -75,9 +75,12 @@
       display: inline-flex;
       align-items: center;
       gap: 12px;
-      font-size: 18px;
+      font-family: "Arial Narrow", "Helvetica Neue Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 19px;
       font-weight: 800;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.055em;
+      color: var(--ink);
+      text-transform: uppercase;
     }
     .brand-mark {
       width: 34px;
@@ -99,9 +102,9 @@
     }
     .brand-mark::before { width: 16px; height: 4px; }
     .brand-mark::after { width: 4px; height: 16px; }
-    .brand-word { display: inline-flex; align-items: baseline; gap: 0; }
-    .brand-tide { color: var(--ink); }
-    .brand-medix { color: var(--primary); }
+    .brand-word { display: inline-flex; align-items: baseline; gap: 0; color: var(--ink); }
+    .brand-tide { color: inherit; }
+    .brand-medix { color: inherit; }
     .nav-links {
       display: flex;
       align-items: center;
