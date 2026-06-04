@@ -16,21 +16,21 @@ const PRODUCT_LINKS = {
 // The "welcome" email at index 0 is sent inline from /api/lead, not by the cron.
 // Remaining steps are sent by the hourly cron based on checkoutStartedAt.
 export const EMAIL_STEPS = [
-  { key: 'welcome',       delayMs: 0,                              subject: (n) => `Your consultation is waiting${n ? `, ${n}` : ''}`,         template: renderWelcomeEmail,     ctaTarget: 'checkout' },
-  { key: 'followup_2h',   delayMs: 2 * 60 * 60 * 1000,             subject: () => 'Quick question about your consultation',                    template: renderTwoHourEmail,     ctaTarget: 'product'  },
-  { key: 'followup_24h',  delayMs: 24 * 60 * 60 * 1000,            subject: () => 'Most people have this question about GLP-1 medications',    template: renderDayOneEmail,      ctaTarget: 'product'  },
-  { key: 'followup_72h',  delayMs: 72 * 60 * 60 * 1000,            subject: () => 'Your physician consultation is still available',            template: renderDayThreeEmail,    ctaTarget: 'product'  },
-  { key: 'followup_5d',   delayMs: 5 * 24 * 60 * 60 * 1000,        subject: () => "3 things most people don't know about prescription weight management", template: renderDayFiveEmail, ctaTarget: 'product' },
+  { key: 'welcome',       delayMs: 0,                              subject: (n) => `Your TideMedix intake${n ? `, ${n}` : ''}`,         template: renderWelcomeEmail,     ctaTarget: 'checkout' },
+  { key: 'followup_2h',   delayMs: 2 * 60 * 60 * 1000,             subject: () => 'Your TideMedix intake',                    template: renderTwoHourEmail,     ctaTarget: 'product'  },
+  { key: 'followup_24h',  delayMs: 24 * 60 * 60 * 1000,            subject: () => 'Your TideMedix information is saved',    template: renderDayOneEmail,      ctaTarget: 'product'  },
+  { key: 'followup_72h',  delayMs: 72 * 60 * 60 * 1000,            subject: () => 'A note from TideMedix',            template: renderDayThreeEmail,    ctaTarget: 'product'  },
+  { key: 'followup_5d',   delayMs: 5 * 24 * 60 * 60 * 1000,        subject: () => 'Your TideMedix intake is still saved', template: renderDayFiveEmail, ctaTarget: 'product' },
   { key: 'followup_10d',  delayMs: 10 * 24 * 60 * 60 * 1000,       subject: () => 'Last note from TideMedix',                                  template: renderDayTenEmail,      ctaTarget: 'product'  }
 ];
 
 // Separate recovery sequence for people who submit contact info, then leave
 // before completing intake/purchase. These emails resume through Rimo's intake.
 export const ABANDON_EMAIL_STEPS = [
-  { key: 'abandon_20m',          delayMs: 20 * 60 * 1000,             subject: () => 'Finish your TideMedix assessment',             template: renderAbandonTwentyMinuteEmail, ctaTarget: 'intake' },
-  { key: 'abandon_next_morning', delayMs: 12 * 60 * 60 * 1000,        subject: () => 'Your assessment is almost ready',              template: renderAbandonNextMorningEmail,  ctaTarget: 'intake' },
-  { key: 'abandon_2d',           delayMs: 2 * 24 * 60 * 60 * 1000,    subject: () => 'Still want to see if you may qualify?',        template: renderAbandonTwoDayEmail,       ctaTarget: 'intake' },
-  { key: 'abandon_5d',           delayMs: 5 * 24 * 60 * 60 * 1000,    subject: () => 'Last reminder to finish your assessment',      template: renderAbandonFiveDayEmail,      ctaTarget: 'intake' }
+  { key: 'abandon_20m',          delayMs: 20 * 60 * 1000,             subject: () => 'Your TideMedix assessment',             template: renderAbandonTwentyMinuteEmail, ctaTarget: 'intake' },
+  { key: 'abandon_next_morning', delayMs: 12 * 60 * 60 * 1000,        subject: () => 'Your TideMedix assessment is saved',              template: renderAbandonNextMorningEmail,  ctaTarget: 'intake' },
+  { key: 'abandon_2d',           delayMs: 2 * 24 * 60 * 60 * 1000,    subject: () => 'A note about your TideMedix assessment',        template: renderAbandonTwoDayEmail,       ctaTarget: 'intake' },
+  { key: 'abandon_5d',           delayMs: 5 * 24 * 60 * 60 * 1000,    subject: () => 'Final note from TideMedix',      template: renderAbandonFiveDayEmail,      ctaTarget: 'intake' }
 ];
 
 // Post-purchase care path for completed + purchased customers. These messages
@@ -46,10 +46,10 @@ export const BUYER_EMAIL_STEPS = [
 // Completed + no purchase path: the person made it through the intake/checkout
 // flow far enough to be actionable, but no paid order is recorded yet.
 export const COMPLETED_NO_PURCHASE_EMAIL_STEPS = [
-  { key: 'complete_nopurchase_15m', delayMs: 15 * 60 * 1000,          subject: () => 'Your TideMedix intake is complete — final step', template: renderCompletedNoPurchaseFifteenMinuteEmail, ctaTarget: 'intake' },
-  { key: 'complete_nopurchase_24h', delayMs: 24 * 60 * 60 * 1000,     subject: () => 'Your consultation is ready for physician review', template: renderCompletedNoPurchaseDayOneEmail,        ctaTarget: 'intake' },
-  { key: 'complete_nopurchase_3d',  delayMs: 3 * 24 * 60 * 60 * 1000, subject: () => 'Still want the TideMedix team to review this?',   template: renderCompletedNoPurchaseDayThreeEmail,      ctaTarget: 'intake' },
-  { key: 'complete_nopurchase_7d',  delayMs: 7 * 24 * 60 * 60 * 1000, subject: () => 'Last reminder about your TideMedix intake',      template: renderCompletedNoPurchaseDaySevenEmail,      ctaTarget: 'intake' }
+  { key: 'complete_nopurchase_15m', delayMs: 15 * 60 * 1000,          subject: () => 'Your TideMedix intake is saved', template: renderCompletedNoPurchaseFifteenMinuteEmail, ctaTarget: 'intake' },
+  { key: 'complete_nopurchase_24h', delayMs: 24 * 60 * 60 * 1000,     subject: () => 'A note about your TideMedix intake', template: renderCompletedNoPurchaseDayOneEmail,        ctaTarget: 'intake' },
+  { key: 'complete_nopurchase_3d',  delayMs: 3 * 24 * 60 * 60 * 1000, subject: () => 'Your TideMedix information is still saved',   template: renderCompletedNoPurchaseDayThreeEmail,      ctaTarget: 'intake' },
+  { key: 'complete_nopurchase_7d',  delayMs: 7 * 24 * 60 * 60 * 1000, subject: () => 'Final note from TideMedix',      template: renderCompletedNoPurchaseDaySevenEmail,      ctaTarget: 'intake' }
 ];
 
 export default {
@@ -798,7 +798,7 @@ function renderAbandonNextMorningEmail(lead, ctaUrl, unsubscribeUrl) {
 
 function renderAbandonTwoDayEmail(lead, ctaUrl, unsubscribeUrl) {
   return emailShell(`
-    <p>Still want to see if prescription weight management may be appropriate for you?</p>
+    <p>Your TideMedix assessment is still saved.</p>
     <p>You only need to finish the remaining assessment questions. Your next step is height and current weight.</p>
     ${ctaButton(ctaUrl, 'Finish the assessment')}
   `, unsubscribeUrl);
@@ -816,10 +816,10 @@ function renderWelcomeEmail(lead, ctaUrl, unsubscribeUrl) {
   const name = lead.firstName ? ` ${escapeHtml(lead.firstName)}` : '';
   return emailShell(`
     <p>Hi${name},</p>
-    <p>You started your TideMedix consultation, but didn't finish. Your answers and treatment selection are saved — you can pick up where you left off.</p>
-    <p>The next step is a quick checkout. From there, a US-licensed physician reviews your consultation and decides whether prescription treatment is appropriate for you.</p>
+    <p>You started your TideMedix intake, but did not finish. Your answers are saved, so you can pick up where you left off.</p>
+    <p>The next step is to return to the secure intake page. From there, your information can continue through the review process.</p>
     ${ctaButton(ctaUrl, 'Continue your consultation')}
-    <p>No phone calls. No insurance runaround. If approved, your medication ships free in two days.</p>
+    <p>If you have a question first, reply to this email and the care team can help.</p>
   `, unsubscribeUrl);
 }
 
@@ -827,20 +827,18 @@ function renderTwoHourEmail(lead, ctaUrl, unsubscribeUrl) {
   const name = lead.firstName ? ` ${escapeHtml(lead.firstName)}` : '';
   return emailShell(`
     <p>Hi${name},</p>
-    <p>Quick question — was anything unclear about the consultation?</p>
-    <p>Most people who pause are wondering one of two things: how the physician review works, or what happens if they're not approved. Both answers are simple.</p>
-    <p>A US-licensed physician reviews your consultation within 24 hours. If treatment is appropriate, you're prescribed a plan. If not, you're not charged for medication.</p>
+    <p>Quick note — your TideMedix intake is still saved.</p>
+    <p>If anything was unclear, you can reply to this email and the care team can help.</p>
+    <p>You can return to the secure intake page when you are ready.</p>
     ${ctaButton(ctaUrl, 'See how TideMedix works')}
   `, unsubscribeUrl);
 }
 
 function renderDayOneEmail(lead, ctaUrl, unsubscribeUrl) {
   return emailShell(`
-    <p>One thing most people ask before starting:</p>
-    <p><strong>"Is this the same kind of medication my doctor would prescribe?"</strong></p>
-    <p>Yes. TideMedix offers GLP-1 medications that are prescribed by US-licensed physicians, the same class of medication used in clinical practice for prescription weight management. The difference is process: an online consultation, a physician review, and direct delivery — without the appointments, copays, and waitlists.</p>
-    <p>Your selection is still saved.</p>
-    ${ctaButton(ctaUrl, 'Learn more')}
+    <p>Your TideMedix information is saved.</p>
+    <p>If you want to continue, return to the secure intake page below. If you have a question first, reply here and the care team can help.</p>
+    ${ctaButton(ctaUrl, 'Return to TideMedix')}
   `, unsubscribeUrl);
 }
 
@@ -858,19 +856,16 @@ function renderDayThreeEmail(lead, ctaUrl, unsubscribeUrl) {
 
 function renderDayFiveEmail(lead, ctaUrl, unsubscribeUrl) {
   return emailShell(`
-    <p>Three things most people don't know about prescription weight management:</p>
-    <p><strong>1. A physician decides, not a form.</strong> Your consultation is reviewed by a US-licensed physician. If GLP-1 treatment isn't appropriate for you, you're not prescribed it.</p>
-    <p><strong>2. The plan is ongoing, not one-time.</strong> Treatment is structured as a monthly plan with physician oversight, not a single shipment.</p>
-    <p><strong>3. You can stop any time.</strong> No long contracts. You're in control of your plan from the dashboard.</p>
-    <p>If that lines up with what you're looking for, your consultation is still here:</p>
-    ${ctaButton(ctaUrl, 'See your plan')}
+    <p>Your TideMedix intake is still saved.</p>
+    <p>If you want to continue, you can return to the secure page below. If not, no action is needed.</p>
+    ${ctaButton(ctaUrl, 'Return to TideMedix')}
   `, unsubscribeUrl);
 }
 
 function renderDayTenEmail(lead, ctaUrl, unsubscribeUrl) {
   return emailShell(`
     <p>This is the last note we'll send.</p>
-    <p>If TideMedix isn't the right fit right now, that's reasonable — prescription weight management should feel clear before you move forward, not rushed.</p>
+    <p>If TideMedix is not the right fit right now, no problem.</p>
     <p>If you'd still like to finish, the door is open:</p>
     ${ctaButton(ctaUrl, 'Return to TideMedix')}
     <p>After this, we'll stop emailing about this consultation. Take care.</p>
@@ -909,8 +904,8 @@ function renderBuyerDayOneEmail(lead, ctaUrl, unsubscribeUrl) {
 function renderBuyerDayThreeEmail(lead, ctaUrl, unsubscribeUrl) {
   return emailShell(`
     <p>A quick expectation-setting note from TideMedix.</p>
-    <p>Prescription weight management is a medical process, not a same-day supplement order. The right sequence is: intake, provider review, approval if appropriate, then fulfillment and shipping.</p>
-    <p>If your order is approved and shipped, follow the instructions provided with your medication and contact the care team with any medical or dosing questions.</p>
+    <p>The right sequence is: intake, provider review, approval if appropriate, then fulfillment and shipping.</p>
+    <p>If your order is approved and shipped, follow the instructions provided and contact the care team with any questions.</p>
     <p>Use your patient portal to keep track of updates and account details.</p>
     ${ctaButton(ctaUrl, 'Go to your Patient Portal')}
   `, unsubscribeUrl);
