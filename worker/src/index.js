@@ -97,7 +97,9 @@ async function handleLeadDashboardApi(request, env) {
   const view = clean(url.searchParams.get('view') || 'summary');
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 100), 1), 500);
   const leads = await listStoredLeads(env, 1000);
+  const clicks = await listStoredEmailClicks(env, 500);
   const summary = buildLeadViews(leads);
+  const emailClickStats = buildEmailClickStats(clicks);
 
   if (view && view !== 'summary') {
     const rows = summary.views[view] || [];
@@ -109,6 +111,7 @@ async function handleLeadDashboardApi(request, env) {
     generatedAt: summary.generatedAt,
     totalLeads: summary.totalLeads,
     counts: summary.counts,
+    emailClickStats,
     views: Object.fromEntries(Object.entries(summary.views).map(([key, rows]) => [key, rows.slice(0, limit)]))
   });
 }
@@ -181,6 +184,75 @@ async function listStoredLeads(env, max = 1000) {
     }
   } while (cursor);
   return sortLeads(leads);
+}
+
+async function listStoredEmailClicks(env, max = 500) {
+  const clicks = [];
+  let cursor;
+  do {
+    const page = await env.TIDEMEDIX_LEADS.list({ prefix: 'click:', cursor, limit: 100 });
+    cursor = page.cursor;
+    for (const key of page.keys) {
+      const raw = await env.TIDEMEDIX_LEADS.get(key.name);
+      if (!raw) continue;
+      try {
+        const event = JSON.parse(raw);
+        clicks.push(sanitizeEmailClickForDashboard(event));
+      } catch (_) {}
+      if (clicks.length >= max) return sortEmailClicks(clicks);
+    }
+  } while (cursor);
+  return sortEmailClicks(clicks);
+}
+
+function sanitizeEmailClickForDashboard(event) {
+  return {
+    id: clean(event.id || ''),
+    leadId: clean(event.leadId || ''),
+    step: clean(event.step || 'unknown'),
+    target: clean(event.target || 'unknown'),
+    rimoStep: clean(event.rimoStep || ''),
+    destination: clean(event.destination || ''),
+    timestamp: clean(event.timestamp || '')
+  };
+}
+
+function sortEmailClicks(clicks) {
+  return clicks.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+}
+
+export function buildEmailClickStats(clicks = []) {
+  const byStep = {};
+  const byRimoStep = {};
+  const byTarget = {};
+  for (const click of clicks) {
+    const step = clean(click.step || 'unknown') || 'unknown';
+    const target = clean(click.target || 'unknown') || 'unknown';
+    const rimoStep = clean(click.rimoStep || '') || rimoStepFromDestination(click.destination) || '';
+    byStep[step] = (byStep[step] || 0) + 1;
+    byTarget[target] = (byTarget[target] || 0) + 1;
+    if (rimoStep) byRimoStep[rimoStep] = (byRimoStep[rimoStep] || 0) + 1;
+  }
+  return {
+    total: clicks.length,
+    byStep: sortCountMap(byStep),
+    byTarget: sortCountMap(byTarget),
+    byRimoStep: sortCountMap(byRimoStep),
+    recent: sortEmailClicks(clicks).slice(0, 25)
+  };
+}
+
+function rimoStepFromDestination(destination) {
+  try {
+    const url = new URL(destination || '');
+    return clean(url.searchParams.get('rimo_step') || '');
+  } catch (_) {
+    return '';
+  }
+}
+
+function sortCountMap(map) {
+  return Object.fromEntries(Object.entries(map).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
 }
 
 function sortLeads(leads) {
@@ -289,16 +361,20 @@ function renderLeadDashboardPage() {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TideMedix Leads</title>
 <style>
 :root{color-scheme:dark;--bg:#061417;--panel:#0d252b;--line:#1f454c;--muted:#8bb5b8;--text:#eaf7f6;--accent:#43d3c4;--hot:#ffca66;--bad:#ff7b7b;--good:#61d394}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#061417,#10262a);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1280px;margin:0 auto;padding:28px}h1{margin:0 0 6px;font-size:28px}p{color:var(--muted)}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.grid{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin:22px 0}.card{background:rgba(13,37,43,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.18)}.metric{cursor:pointer}.metric.active{outline:2px solid var(--accent)}.metric b{display:block;font-size:30px}.metric span{color:var(--muted);font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}.tabs button{background:#0d252b;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:10px 14px;cursor:pointer}.tabs button.active{background:var(--accent);color:#041013;font-weight:800}.table{overflow:auto}.row,.head{display:grid;grid-template-columns:1.35fr .9fr .75fr .65fr .9fr .9fr .8fr;gap:10px;align-items:center;min-width:980px;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.07)}.head{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.name{font-weight:750}.sub{color:var(--muted);font-size:12px;margin-top:2px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:12px;color:var(--muted)}.hot{color:var(--hot)}.good{color:var(--good)}.bad{color:var(--bad)}a{color:var(--accent)}.bar{height:8px;background:#16373d;border-radius:999px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}.small{font-size:12px;color:var(--muted)}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.top{display:block}}
-</style></head><body><main><div class="top"><div><h1>TideMedix Lead Cockpit</h1><p>Rimo funnel events, buyers, abandoners, and follow-up priority from the TideMedix Worker.</p></div><div class="small" id="stamp">Loading…</div></div><section class="grid" id="metrics"></section><section class="card"><div class="tabs" id="tabs"></div><div class="table"><div class="head"><div>Lead</div><div>Stage</div><div>Progress</div><div>Value</div><div>Last Step</div><div>Updated</div><div>Actions</div></div><div id="rows"></div></div></section></main>
+</style></head><body><main><div class="top"><div><h1>TideMedix Lead Cockpit</h1><p>Rimo funnel events, buyers, abandoners, and follow-up priority from the TideMedix Worker.</p></div><div class="small" id="stamp">Loading…</div></div><section class="grid" id="metrics"></section><section class="card" id="clickStats"></section><section class="card"><div class="tabs" id="tabs"></div><div class="table"><div class="head"><div>Lead</div><div>Stage</div><div>Progress</div><div>Value</div><div>Last Step</div><div>Updated</div><div>Actions</div></div><div id="rows"></div></div></section></main>
 <script>
 const token=new URL(location.href).searchParams.get('token')||localStorage.tidemedixLeadToken||''; if(token) localStorage.tidemedixLeadToken=token;
 const labels={hot_leads:'Hot Leads',completed_no_purchase:'Completed No Purchase',checkout_abandoners:'Checkout Abandoners',new_leads_today:'New Today',buyers:'Buyers',needs_follow_up:'Needs Follow-up',disqualified:'Disqualified',all:'All Leads'};
 let data=null, current='hot_leads';
 function esc(s){return String(s||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function ago(s){if(!s)return ''; const ms=Date.now()-new Date(s).getTime(); const h=Math.floor(ms/36e5); if(h<1)return Math.max(0,Math.floor(ms/6e4))+'m ago'; if(h<48)return h+'h ago'; return Math.floor(h/24)+'d ago'}
+function mapRows(m){const e=Object.entries(m||{}); return e.length?e.map(([k,v])=>'<span class="pill">'+esc(k)+': '+v+'</span>').join(' '):'<span class="small">No clicks yet</span>'}
+function clickRouteRows(clicks){return (clicks||[]).slice(0,8).map(c=>'<div class="row" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>'+esc(c.step)+'</div><div>'+esc(c.target||'—')+'</div><div>'+esc(c.rimoStep||'—')+'</div><div class="small">'+esc(c.destination||'')+'</div><div>'+ago(c.timestamp)+'</div></div>').join('')}
+function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},recent:[]}; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Click Routing</h2><p style="margin-top:0">'+s.total+' tracked email clicks. Use this to confirm each email resumes the intended Rimo step.</p><div class="grid" style="grid-template-columns:repeat(3,minmax(180px,1fr));margin:12px 0"><div><div class="small">By email</div>'+mapRows(s.byStep)+'</div><div><div class="small">By target</div>'+mapRows(s.byTarget)+'</div><div><div class="small">By Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="table"><div class="head" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>Email</div><div>Target</div><div>Rimo Step</div><div>Destination</div><div>Clicked</div></div>'+clickRouteRows(s.recent)+'</div>'}
 function render(){document.getElementById('stamp').textContent='Updated '+new Date(data.generatedAt).toLocaleString()+' · '+data.totalLeads+' total';
  const metricKeys=['hot_leads','completed_no_purchase','checkout_abandoners','buyers','needs_follow_up'];
  document.getElementById('metrics').innerHTML=metricKeys.map(k=>\`<div class="card metric \${current===k?'active':''}" onclick="show('\${k}')"><b>\${data.counts[k]||0}</b><span>\${labels[k]}</span></div>\`).join('');
+ renderClickStats();
  const tabs=['hot_leads','completed_no_purchase','checkout_abandoners','needs_follow_up','buyers','new_leads_today','disqualified','all'];
  document.getElementById('tabs').innerHTML=tabs.map(k=>\`<button class="\${current===k?'active':''}" onclick="show('\${k}')">\${labels[k]} (\${data.counts[k]||0})</button>\`).join('');
  const rows=data.views[current]||[];

@@ -6,6 +6,7 @@ import {
   COMPLETED_NO_PURCHASE_EMAIL_STEPS,
   EMAIL_STEPS,
   appendEmailAttribution,
+  buildEmailClickStats,
   buildEmailClickUrl,
   buildResumeUrl,
   buildRimoResumeUrl,
@@ -86,6 +87,19 @@ test('email attribution can expose the target Rimo step for UTM stats', () => {
   assert.equal(parsed.searchParams.get('utm_content'), 'intake__medva-patient-notes');
   assert.equal(parsed.searchParams.get('tm_target'), 'intake');
   assert.equal(parsed.searchParams.get('rimo_step'), 'medva-patient-notes');
+});
+
+test('dashboard email click stats summarize target Rimo steps', () => {
+  const stats = buildEmailClickStats([
+    { step: 'complete_nopurchase_15m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes', timestamp: '2026-06-04T01:00:00Z' },
+    { step: 'complete_nopurchase_15m', target: 'intake', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes', timestamp: '2026-06-04T01:05:00Z' },
+    { step: 'buyer_day0', target: 'portal', destination: 'https://try.tidemedix.com/sign-in', timestamp: '2026-06-04T01:10:00Z' }
+  ]);
+  assert.equal(stats.total, 3);
+  assert.equal(stats.byStep.complete_nopurchase_15m, 2);
+  assert.equal(stats.byTarget.intake, 2);
+  assert.equal(stats.byRimoStep['medva-patient-notes'], 2);
+  assert.equal(stats.recent[0].step, 'buyer_day0');
 });
 
 test('completed checkout sequence remains the regular follow-up track', () => {
