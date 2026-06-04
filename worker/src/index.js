@@ -267,7 +267,7 @@ export function buildEmailClickStats(clicks = []) {
   const byStep = {};
   const byRimoStep = {};
   const byTarget = {};
-  const audited = sortEmailClicks(clicks).map(buildRouteAuditRow);
+  const audited = sortRouteAuditRows(sortEmailClicks(clicks).map(buildRouteAuditRow));
   const routeStatus = { ok: 0, warn: 0, bad: 0 };
 
   for (const click of clicks) {
@@ -316,9 +316,11 @@ export function buildRouteAuditRow(click = {}) {
     expectedTarget,
     actualTarget,
     expectedRimoStep,
+    expectedRimoStepLabel: labelRimoStep(expectedRimoStep),
     actualRimoStep,
+    actualRimoStepLabel: labelRimoStep(actualRimoStep),
     status,
-    statusLabel: status === 'ok' ? 'Route OK' : (status === 'warn' ? 'Check' : 'Mismatch'),
+    statusLabel: status === 'ok' ? 'Route OK' : (status === 'warn' ? 'Check' : 'Needs Review'),
     destination: clean(click.destination || ''),
     timestamp: clean(click.timestamp || '')
   };
@@ -431,6 +433,31 @@ function sortCountMap(map) {
   return Object.fromEntries(Object.entries(map).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
 }
 
+function sortRouteAuditRows(rows = []) {
+  const priority = { bad: 0, warn: 1, ok: 2 };
+  return rows.sort((a, b) => (priority[a.status] ?? 9) - (priority[b.status] ?? 9) || new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+}
+
+function labelRimoStep(value) {
+  const raw = clean(value || '');
+  if (!raw) return '';
+  const slug = rimoStepSlug(raw);
+  const labels = {
+    checkout: 'Checkout',
+    'height-weight': 'Height + Weight',
+    'medva-patient-notes': 'Patient Notes',
+    'medva-create-account': 'Create Account',
+    'medva-details-programs': 'Program Details',
+    'medva-details-program': 'Program Details',
+    'medva-demographics': 'Demographics',
+    'medva-medical-history': 'Medical History',
+    'medva-shipping': 'Shipping',
+    'medva-payment': 'Payment'
+  };
+  if (labels[slug]) return labels[slug];
+  return slug.split('-').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function sortLeads(leads) {
   return leads.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
 }
@@ -452,6 +479,7 @@ function sanitizeLeadForDashboard(lead) {
     checkoutUrl: lead.checkoutUrl || '',
     resumeUrl: buildResumeUrl(lead),
     lastStep: lead.rimo?.lastStep || '',
+    lastStepLabel: labelRimoStep(lead.rimo?.lastStep || ''),
     progress: Number(lead.rimo?.progress || 0),
     rimoStatus: lead.rimo?.status || '',
     rimoLeadId: lead.rimo?.leadId || '',
@@ -546,11 +574,11 @@ let data=null, current='hot_leads';
 function esc(s){return String(s||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function ago(s){if(!s)return ''; const ms=Date.now()-new Date(s).getTime(); const h=Math.floor(ms/36e5); if(h<1)return Math.max(0,Math.floor(ms/6e4))+'m ago'; if(h<48)return h+'h ago'; return Math.floor(h/24)+'d ago'}
 function mapRows(m){const e=Object.entries(m||{}); return e.length?e.map(([k,v])=>'<span class="pill">'+esc(k)+': '+v+'</span>').join(' '):'<span class="small">No clicks yet</span>'}
-function routeStatusPills(m){const ok=Number(m&&m.ok||0), warn=Number(m&&m.warn||0), bad=Number(m&&m.bad||0); return '<span class="pill good">OK: '+ok+'</span> <span class="pill hot">Check: '+warn+'</span> <span class="pill bad">Mismatch: '+bad+'</span>'}
+function routeStatusPills(m){const ok=Number(m&&m.ok||0), warn=Number(m&&m.warn||0), bad=Number(m&&m.bad||0); return '<span class="pill good">OK: '+ok+'</span> <span class="pill hot">Check: '+warn+'</span> <span class="pill bad">Needs Review: '+bad+'</span>'}
 function auditStatusClass(s){return s==='ok'?'good':(s==='bad'?'bad':'hot')}
 function stepLabel(c){return c.label||c.step||'unknown'}
-function routeAuditRows(rows){return (rows||[]).slice(0,10).map(c=>'<div class="row" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div><div class="name">'+esc(stepLabel(c))+'</div><div class="sub">'+esc(c.step)+'</div></div><div>'+esc(c.expectedTarget||'—')+'</div><div>'+esc(c.actualTarget||'—')+'</div><div>'+esc(c.expectedRimoStep||'—')+'</div><div>'+esc(c.actualRimoStep||'—')+'</div><div><span class="pill '+auditStatusClass(c.status)+'">'+esc(c.statusLabel||c.status)+'</span></div><div>'+ago(c.timestamp)+'</div></div>').join('')}
-function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},routeStatus:{},routeAudit:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Route Audit</h2><p style="margin-top:0">SES confirms provider delivery. Route audit compares every clicked email against the expected target and expected Rimo step.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Route audit</div>'+routeStatusPills(s.routeStatus)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div>Email Step</div><div>Expected Target</div><div>Actual Target</div><div>Expected Rimo Step</div><div>Actual Rimo Step</div><div>Status</div><div>Clicked</div></div>'+routeAuditRows(s.routeAudit)+'</div>'}
+function routeAuditRows(rows){return (rows||[]).slice(0,10).map(c=>'<div class="row" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div><div class="name">'+esc(stepLabel(c))+'</div><div class="sub">'+esc(c.step)+'</div></div><div>'+esc(c.expectedTarget||'—')+'</div><div>'+esc(c.actualTarget||'—')+'</div><div>'+esc(c.expectedRimoStepLabel||c.expectedRimoStep||'—')+'</div><div>'+esc(c.actualRimoStepLabel||c.actualRimoStep||'—')+'</div><div><span class="pill '+auditStatusClass(c.status)+'">'+esc(c.statusLabel||c.status)+'</span></div><div>'+ago(c.timestamp)+'</div></div>').join('')}
+function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},routeStatus:{},routeAudit:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Route Audit</h2><p style="margin-top:0">SES confirms provider delivery. Route audit surfaces Needs Review first, then Checks, then OK routes. Needs Review means the email expected one destination but the clicked link tracked a different target.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Route audit</div>'+routeStatusPills(s.routeStatus)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div>Email Step</div><div>Expected Target</div><div>Actual Target</div><div>Expected Rimo Step</div><div>Actual Rimo Step</div><div>Status</div><div>Clicked</div></div>'+routeAuditRows(s.routeAudit)+'</div>'}
 function render(){document.getElementById('stamp').textContent='Updated '+new Date(data.generatedAt).toLocaleString()+' · '+data.totalLeads+' total';
  const metricKeys=['hot_leads','completed_no_purchase','checkout_abandoners','buyers','needs_follow_up'];
  document.getElementById('metrics').innerHTML=metricKeys.map(k=>\`<div class="card metric \${current===k?'active':''}" onclick="show('\${k}')"><b>\${data.counts[k]||0}</b><span>\${labels[k]}</span></div>\`).join('');
@@ -558,7 +586,7 @@ function render(){document.getElementById('stamp').textContent='Updated '+new Da
  const tabs=['hot_leads','completed_no_purchase','checkout_abandoners','needs_follow_up','buyers','new_leads_today','disqualified','all'];
  document.getElementById('tabs').innerHTML=tabs.map(k=>\`<button class="\${current===k?'active':''}" onclick="show('\${k}')">\${labels[k]} (\${data.counts[k]||0})</button>\`).join('');
  const rows=data.views[current]||[];
- document.getElementById('rows').innerHTML=rows.length?rows.map(l=>{const cls=l.leadStage==='buyer'?'good':(l.leadStage==='disqualified'?'bad':(l.leadStage==='hot_lead'?'hot':'')); const pct=Math.max(0,Math.min(100,Number(l.progress||0))); const action=(l.checkoutUrl?'<a href="'+esc(l.checkoutUrl)+'" target="_blank">checkout</a> · ':'')+'<a href="'+esc(l.resumeUrl)+'" target="_blank">resume</a>'; return '<div class="row"><div><div class="name">'+esc([l.firstName,l.lastName].filter(Boolean).join(' ')||l.email)+'</div><div class="sub">'+esc(l.email)+(l.phone?' · '+esc(l.phone):'')+'</div></div><div><span class="pill '+cls+'">'+esc(l.leadStage)+'</span><div class="sub">'+esc(l.reason)+'</div></div><div><div class="bar"><i style="width:'+pct+'%"></i></div><div class="sub">'+(pct||'—')+'%</div></div><div>$'+Number(l.value||0).toFixed(0)+'</div><div>'+esc(l.lastStep||l.rimoStatus||'—')+'</div><div>'+ago(l.updatedAt)+'<div class="sub">'+esc((l.updatedAt||'').slice(0,10))+'</div></div><div>'+action+'</div></div>'}).join(''):'<p style="padding:18px">No leads in this view yet.</p>';
+ document.getElementById('rows').innerHTML=rows.length?rows.map(l=>{const cls=l.leadStage==='buyer'?'good':(l.leadStage==='disqualified'?'bad':(l.leadStage==='hot_lead'?'hot':'')); const pct=Math.max(0,Math.min(100,Number(l.progress||0))); const action=(l.checkoutUrl?'<a href="'+esc(l.checkoutUrl)+'" target="_blank">checkout</a> · ':'')+'<a href="'+esc(l.resumeUrl)+'" target="_blank">resume</a>'; return '<div class="row"><div><div class="name">'+esc([l.firstName,l.lastName].filter(Boolean).join(' ')||l.email)+'</div><div class="sub">'+esc(l.email)+(l.phone?' · '+esc(l.phone):'')+'</div></div><div><span class="pill '+cls+'">'+esc(l.leadStage)+'</span><div class="sub">'+esc(l.reason)+'</div></div><div><div class="bar"><i style="width:'+pct+'%"></i></div><div class="sub">'+(pct||'—')+'%</div></div><div>$'+Number(l.value||0).toFixed(0)+'</div><div>'+esc(l.lastStepLabel||l.lastStep||l.rimoStatus||'—')+'</div><div>'+ago(l.updatedAt)+'<div class="sub">'+esc((l.updatedAt||'').slice(0,10))+'</div></div><div>'+action+'</div></div>'}).join(''):'<p style="padding:18px">No leads in this view yet.</p>';
 }
 function show(k){current=k; render()}
 fetch('/api/leads-summary?limit=250&token='+encodeURIComponent(token),{cache:'no-store'}).then(r=>r.json()).then(j=>{if(!j.ok) throw new Error(j.error); data=j; render()}).catch(e=>{document.body.innerHTML='<main><div class="card"><h1>Dashboard locked</h1><p>'+esc(e.message)+'</p><p><a href="/leads">Enter token</a></p></div></main>'})

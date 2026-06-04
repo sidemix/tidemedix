@@ -130,6 +130,17 @@ test('route audit flags expected vs actual email destinations', () => {
   assert.equal(mismatch.expectedTarget, 'intake');
   assert.equal(mismatch.actualTarget, 'product');
   assert.equal(mismatch.status, 'bad');
+  assert.equal(mismatch.statusLabel, 'Needs Review');
+});
+
+test('route audit sorts Needs Review rows ahead of OK rows', () => {
+  const stats = buildEmailClickStats([
+    { step: 'welcome', target: 'checkout', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?tm_target=checkout', timestamp: '2026-06-04T02:00:00Z' },
+    { step: 'complete_nopurchase_15m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://tidemedix.com/therapy/weight-loss-glp-1/?tm_target=product', timestamp: '2026-06-04T01:00:00Z' }
+  ]);
+  assert.equal(stats.routeAudit[0].status, 'bad');
+  assert.equal(stats.routeAudit[0].statusLabel, 'Needs Review');
+  assert.equal(stats.routeAudit[1].status, 'ok');
 });
 
 test('completed checkout sequence remains the regular follow-up track', () => {
