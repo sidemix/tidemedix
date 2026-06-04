@@ -52,6 +52,13 @@ export const COMPLETED_NO_PURCHASE_EMAIL_STEPS = [
   { key: 'complete_nopurchase_7d',  delayMs: 7 * 24 * 60 * 60 * 1000, subject: () => 'Final note from TideMedix',      template: renderCompletedNoPurchaseDaySevenEmail,      ctaTarget: 'intake' }
 ];
 
+const ALL_EMAIL_STEPS = [
+  ...EMAIL_STEPS,
+  ...ABANDON_EMAIL_STEPS,
+  ...BUYER_EMAIL_STEPS,
+  ...COMPLETED_NO_PURCHASE_EMAIL_STEPS
+];
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return corsResponse(request, null, 204);
@@ -172,7 +179,7 @@ async function handleTestFollowup(request, env) {
   const stepKey = clean(body.step || 'complete_nopurchase_15m');
   if (!email || !email.includes('@')) return json(request, { ok: false, error: 'valid_email_required' }, 400);
 
-  const step = [...EMAIL_STEPS, ...ABANDON_EMAIL_STEPS, ...BUYER_EMAIL_STEPS, ...COMPLETED_NO_PURCHASE_EMAIL_STEPS].find(s => s.key === stepKey);
+  const step = ALL_EMAIL_STEPS.find(s => s.key === stepKey);
   if (!step) return json(request, { ok: false, error: 'unknown_step' }, 400);
 
   const now = new Date().toISOString();
@@ -260,6 +267,9 @@ export function buildEmailClickStats(clicks = []) {
   const byStep = {};
   const byRimoStep = {};
   const byTarget = {};
+  const audited = sortEmailClicks(clicks).map(buildRouteAuditRow);
+  const routeStatus = { ok: 0, warn: 0, bad: 0 };
+
   for (const click of clicks) {
     const step = clean(click.step || 'unknown') || 'unknown';
     const target = clean(click.target || 'unknown') || 'unknown';
@@ -268,12 +278,49 @@ export function buildEmailClickStats(clicks = []) {
     byTarget[target] = (byTarget[target] || 0) + 1;
     if (rimoStep) byRimoStep[rimoStep] = (byRimoStep[rimoStep] || 0) + 1;
   }
+
+  for (const row of audited) {
+    routeStatus[row.status] = (routeStatus[row.status] || 0) + 1;
+  }
+
   return {
     total: clicks.length,
     byStep: sortCountMap(byStep),
     byTarget: sortCountMap(byTarget),
     byRimoStep: sortCountMap(byRimoStep),
+    routeStatus,
+    routeAudit: audited.slice(0, 25),
     recent: sortEmailClicks(clicks).slice(0, 25)
+  };
+}
+
+export function buildRouteAuditRow(click = {}) {
+  const stepKey = clean(click.step || 'unknown') || 'unknown';
+  const expectedStep = ALL_EMAIL_STEPS.find(s => s.key === stepKey);
+  const expectedTarget = clean(expectedStep?.ctaTarget || 'unknown') || 'unknown';
+  const actualTarget = targetFromDestination(click.destination) || clean(click.target || '') || 'unknown';
+  const expectedRimoStep = expectedTarget === 'intake'
+    ? (clean(click.rimoStep || '') || rimoStepParamFromDestination(click.destination) || rimoStepFromDestination(click.destination) || '')
+    : '';
+  const actualRimoStep = expectedTarget === 'intake' ? (rimoStepFromDestination(click.destination) || '') : '';
+  const targetMatches = expectedTarget === actualTarget;
+  const rimoMatches = expectedTarget !== 'intake' || !expectedRimoStep || expectedRimoStep === actualRimoStep;
+  const missing = actualTarget === 'unknown' || (expectedTarget === 'intake' && !actualRimoStep);
+  const status = !targetMatches ? 'bad' : (rimoMatches ? 'ok' : (missing ? 'warn' : 'bad'));
+
+  return {
+    id: clean(click.id || ''),
+    leadId: clean(click.leadId || ''),
+    step: stepKey,
+    label: labelEmailStep(stepKey),
+    expectedTarget,
+    actualTarget,
+    expectedRimoStep,
+    actualRimoStep,
+    status,
+    statusLabel: status === 'ok' ? 'Route OK' : (status === 'warn' ? 'Check' : 'Mismatch'),
+    destination: clean(click.destination || ''),
+    timestamp: clean(click.timestamp || '')
   };
 }
 
@@ -324,13 +371,60 @@ function normalizeDeliveryStatus(value) {
   return 'unknown';
 }
 
-function rimoStepFromDestination(destination) {
+function rimoStepParamFromDestination(destination) {
   try {
     const url = new URL(destination || '');
     return clean(url.searchParams.get('rimo_step') || '');
   } catch (_) {
     return '';
   }
+}
+
+function targetFromDestination(destination) {
+  try {
+    const url = new URL(destination || '');
+    return clean(url.searchParams.get('tm_target') || '').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+  } catch (_) {
+    return '';
+  }
+}
+
+function rimoStepFromDestination(destination) {
+  try {
+    const url = new URL(destination || '');
+    const fromParam = clean(url.searchParams.get('rimo_step') || '');
+    if (fromParam) return fromParam;
+    const parts = url.pathname.split('/').map(p => clean(p)).filter(Boolean);
+    const intakeIndex = parts.findIndex(p => p === 'intake');
+    if (intakeIndex >= 0 && parts[intakeIndex + 2]) return rimoStepSlug(parts[intakeIndex + 2]);
+    return '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function labelEmailStep(stepKey) {
+  const labels = {
+    welcome: 'Welcome',
+    followup_2h: 'Follow-up: 2h',
+    followup_24h: 'Follow-up: 24h',
+    followup_72h: 'Follow-up: 72h',
+    followup_5d: 'Follow-up: 5d',
+    followup_10d: 'Follow-up: 10d',
+    abandon_20m: 'Abandoner: 20m',
+    abandon_next_morning: 'Abandoner: Next Morning',
+    abandon_2d: 'Abandoner: 2d',
+    abandon_5d: 'Abandoner: 5d',
+    buyer_day0: 'Buyer: Day 0',
+    buyer_day1: 'Buyer: Day 1',
+    buyer_day3: 'Buyer: Day 3',
+    buyer_day7: 'Buyer: Day 7',
+    complete_nopurchase_15m: 'Completed No Purchase: 15m',
+    complete_nopurchase_24h: 'Completed No Purchase: 24h',
+    complete_nopurchase_3d: 'Completed No Purchase: 3d',
+    complete_nopurchase_7d: 'Completed No Purchase: 7d'
+  };
+  return labels[stepKey] || clean(stepKey || 'Unknown').replace(/_/g, ' ');
 }
 
 function sortCountMap(map) {
@@ -452,8 +546,11 @@ let data=null, current='hot_leads';
 function esc(s){return String(s||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function ago(s){if(!s)return ''; const ms=Date.now()-new Date(s).getTime(); const h=Math.floor(ms/36e5); if(h<1)return Math.max(0,Math.floor(ms/6e4))+'m ago'; if(h<48)return h+'h ago'; return Math.floor(h/24)+'d ago'}
 function mapRows(m){const e=Object.entries(m||{}); return e.length?e.map(([k,v])=>'<span class="pill">'+esc(k)+': '+v+'</span>').join(' '):'<span class="small">No clicks yet</span>'}
-function clickRouteRows(clicks){return (clicks||[]).slice(0,8).map(c=>'<div class="row" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>'+esc(c.step)+'</div><div>'+esc(c.target||'—')+'</div><div>'+esc(c.rimoStep||'—')+'</div><div class="small">'+esc(c.destination||'')+'</div><div>'+ago(c.timestamp)+'</div></div>').join('')}
-function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},recent:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Click Routing</h2><p style="margin-top:0">SES delivery events show inbox-provider acceptance. Click routing confirms each email resumes the intended Rimo step.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Clicks by target</div>'+mapRows(s.byTarget)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>Email</div><div>Target</div><div>Rimo Step</div><div>Destination</div><div>Clicked</div></div>'+clickRouteRows(s.recent)+'</div>'}
+function routeStatusPills(m){const ok=Number(m&&m.ok||0), warn=Number(m&&m.warn||0), bad=Number(m&&m.bad||0); return '<span class="pill good">OK: '+ok+'</span> <span class="pill hot">Check: '+warn+'</span> <span class="pill bad">Mismatch: '+bad+'</span>'}
+function auditStatusClass(s){return s==='ok'?'good':(s==='bad'?'bad':'hot')}
+function stepLabel(c){return c.label||c.step||'unknown'}
+function routeAuditRows(rows){return (rows||[]).slice(0,10).map(c=>'<div class="row" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div><div class="name">'+esc(stepLabel(c))+'</div><div class="sub">'+esc(c.step)+'</div></div><div>'+esc(c.expectedTarget||'—')+'</div><div>'+esc(c.actualTarget||'—')+'</div><div>'+esc(c.expectedRimoStep||'—')+'</div><div>'+esc(c.actualRimoStep||'—')+'</div><div><span class="pill '+auditStatusClass(c.status)+'">'+esc(c.statusLabel||c.status)+'</span></div><div>'+ago(c.timestamp)+'</div></div>').join('')}
+function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},routeStatus:{},routeAudit:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Route Audit</h2><p style="margin-top:0">SES confirms provider delivery. Route audit compares every clicked email against the expected target and expected Rimo step.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Route audit</div>'+routeStatusPills(s.routeStatus)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div>Email Step</div><div>Expected Target</div><div>Actual Target</div><div>Expected Rimo Step</div><div>Actual Rimo Step</div><div>Status</div><div>Clicked</div></div>'+routeAuditRows(s.routeAudit)+'</div>'}
 function render(){document.getElementById('stamp').textContent='Updated '+new Date(data.generatedAt).toLocaleString()+' · '+data.totalLeads+' total';
  const metricKeys=['hot_leads','completed_no_purchase','checkout_abandoners','buyers','needs_follow_up'];
  document.getElementById('metrics').innerHTML=metricKeys.map(k=>\`<div class="card metric \${current===k?'active':''}" onclick="show('\${k}')"><b>\${data.counts[k]||0}</b><span>\${labels[k]}</span></div>\`).join('');
@@ -657,7 +754,7 @@ async function handleEmailClick(request, env) {
   const lead = await getLead(env, id);
   if (!lead || !lead.email) return redirect(fallbackUrl);
 
-  const step = [...EMAIL_STEPS, ...ABANDON_EMAIL_STEPS, ...BUYER_EMAIL_STEPS, ...COMPLETED_NO_PURCHASE_EMAIL_STEPS].find(s => s.key === stepKey);
+  const step = ALL_EMAIL_STEPS.find(s => s.key === stepKey);
   const destination = trackedDestinationForStep(lead, step, env, stepKey);
   const now = new Date().toISOString();
   const eventId = crypto.randomUUID();

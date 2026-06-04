@@ -8,6 +8,7 @@ import {
   appendEmailAttribution,
   buildEmailClickStats,
   buildEmailDeliveryStats,
+  buildRouteAuditRow,
   buildEmailClickUrl,
   buildResumeUrl,
   buildRimoResumeUrl,
@@ -93,15 +94,42 @@ test('email attribution can expose the target Rimo step for UTM stats', () => {
 
 test('dashboard email click stats summarize target Rimo steps', () => {
   const stats = buildEmailClickStats([
-    { step: 'complete_nopurchase_15m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes', timestamp: '2026-06-04T01:00:00Z' },
-    { step: 'complete_nopurchase_15m', target: 'intake', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes', timestamp: '2026-06-04T01:05:00Z' },
-    { step: 'buyer_day0', target: 'portal', destination: 'https://try.tidemedix.com/sign-in', timestamp: '2026-06-04T01:10:00Z' }
+    { step: 'complete_nopurchase_15m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes&tm_target=intake', timestamp: '2026-06-04T01:00:00Z' },
+    { step: 'complete_nopurchase_15m', target: 'intake', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes&tm_target=intake', timestamp: '2026-06-04T01:05:00Z' },
+    { step: 'buyer_day0', target: 'portal', destination: 'https://try.tidemedix.com/sign-in?tm_target=portal', timestamp: '2026-06-04T01:10:00Z' }
   ]);
   assert.equal(stats.total, 3);
   assert.equal(stats.byStep.complete_nopurchase_15m, 2);
   assert.equal(stats.byTarget.intake, 2);
   assert.equal(stats.byRimoStep['medva-patient-notes'], 2);
+  assert.equal(stats.routeStatus.ok, 3);
+  assert.equal(stats.routeStatus.bad, 0);
+  assert.equal(stats.routeAudit[0].status, 'ok');
   assert.equal(stats.recent[0].step, 'buyer_day0');
+});
+
+test('route audit flags expected vs actual email destinations', () => {
+  const ok = buildRouteAuditRow({
+    step: 'complete_nopurchase_15m',
+    target: 'intake',
+    rimoStep: 'medva-patient-notes',
+    destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?tm_target=intake&rimo_step=medva-patient-notes'
+  });
+  assert.equal(ok.expectedTarget, 'intake');
+  assert.equal(ok.actualTarget, 'intake');
+  assert.equal(ok.expectedRimoStep, 'medva-patient-notes');
+  assert.equal(ok.actualRimoStep, 'medva-patient-notes');
+  assert.equal(ok.status, 'ok');
+
+  const mismatch = buildRouteAuditRow({
+    step: 'complete_nopurchase_15m',
+    target: 'intake',
+    rimoStep: 'medva-patient-notes',
+    destination: 'https://tidemedix.com/therapy/weight-loss-glp-1/?tm_target=product'
+  });
+  assert.equal(mismatch.expectedTarget, 'intake');
+  assert.equal(mismatch.actualTarget, 'product');
+  assert.equal(mismatch.status, 'bad');
 });
 
 test('completed checkout sequence remains the regular follow-up track', () => {
