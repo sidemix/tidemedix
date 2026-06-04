@@ -70,6 +70,7 @@ export default {
       if (url.pathname === '/api/purchased' && request.method === 'POST') return handlePurchase(request, env, ctx);
       if (url.pathname === '/api/rimo-webhook' && request.method === 'POST') return handleRimoWebhook(request, env, ctx);
       if (url.pathname === '/api/email-click' && request.method === 'GET') return handleEmailClick(request, env);
+      if (url.pathname === '/api/ses-event' && request.method === 'POST') return handleSesEvent(request, env, ctx);
       if (url.pathname === '/api/unsubscribe' && request.method === 'GET') return handleUnsubscribe(request, env);
       return json(request, { ok: false, error: 'not_found' }, 404);
     } catch (error) {
@@ -112,8 +113,42 @@ async function handleLeadDashboardApi(request, env) {
     totalLeads: summary.totalLeads,
     counts: summary.counts,
     emailClickStats,
+    emailDeliveryStats: buildEmailDeliveryStats(leads),
     views: Object.fromEntries(Object.entries(summary.views).map(([key, rows]) => [key, rows.slice(0, limit)]))
   });
+}
+
+async function handleSesEvent(request, env, ctx) {
+  const configured = clean(env.SES_EVENT_TOKEN || '');
+  if (!configured) return json(request, { ok: false, error: 'ses_event_token_not_configured' }, 503);
+
+  const url = new URL(request.url);
+  const supplied = clean(url.searchParams.get('token') || request.headers.get('x-ses-event-token') || '').replace(/^Bearer\s+/i, '');
+  if (!supplied || !safeEqual(supplied, configured)) return json(request, { ok: false, error: 'unauthorized' }, 401);
+
+  const envelope = await request.json().catch(() => null);
+  if (!envelope || typeof envelope !== 'object') return json(request, { ok: false, error: 'invalid_json' }, 400);
+
+  // AWS SNS requires a one-time subscription confirmation. Confirming here is
+  // safe because this endpoint is token-protected and does not touch lead state.
+  if (envelope.Type === 'SubscriptionConfirmation' && envelope.SubscribeURL) {
+    ctx?.waitUntil?.(fetch(envelope.SubscribeURL).catch(err => console.error('sns_subscription_confirmation_failed', err)));
+    return json(request, { ok: true, type: 'SubscriptionConfirmation' });
+  }
+
+  if (envelope.Type !== 'Notification') return json(request, { ok: true, ignored: true, type: clean(envelope.Type || 'unknown') });
+
+  let message;
+  try {
+    message = typeof envelope.Message === 'string' ? JSON.parse(envelope.Message) : envelope.Message;
+  } catch (_) {
+    return json(request, { ok: false, error: 'invalid_sns_message' }, 400);
+  }
+  const normalized = normalizeSesEvent(message, envelope);
+  if (!normalized.messageId) return json(request, { ok: false, error: 'missing_message_id' }, 400);
+
+  const updated = await recordSesEvent(env, normalized);
+  return json(request, { ok: true, eventType: normalized.eventType, messageId: normalized.messageId, leadId: updated.leadId || '', step: updated.step || '', updated: updated.updated });
 }
 
 function authorizeLeadDashboard(request, env) {
@@ -242,6 +277,53 @@ export function buildEmailClickStats(clicks = []) {
   };
 }
 
+export function buildEmailDeliveryStats(leads = []) {
+  const totals = { sent: 0, delivered: 0, bounced: 0, complained: 0, rejected: 0, failed: 0, unknown: 0 };
+  const byStep = {};
+  const recent = [];
+
+  for (const lead of leads) {
+    const events = lead.emailEvents || {};
+    for (const [step, event] of Object.entries(events)) {
+      const status = normalizeDeliveryStatus(event?.status || event?.eventType || 'unknown');
+      totals[status] = (totals[status] || 0) + 1;
+      byStep[step] = byStep[step] || { sent: 0, delivered: 0, bounced: 0, complained: 0, rejected: 0, failed: 0, unknown: 0 };
+      byStep[step][status] = (byStep[step][status] || 0) + 1;
+      recent.push({
+        leadId: clean(lead.id || ''),
+        email: clean(lead.email || ''),
+        step,
+        status,
+        messageId: clean(event?.messageId || ''),
+        timestamp: clean(event?.lastEventAt || event?.deliveredAt || event?.bouncedAt || event?.complainedAt || event?.rejectedAt || event?.sentAt || '')
+      });
+    }
+  }
+
+  recent.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+  const delivered = Number(totals.delivered || 0);
+  const terminalFailures = Number(totals.bounced || 0) + Number(totals.complained || 0) + Number(totals.rejected || 0) + Number(totals.failed || 0);
+  const terminal = delivered + terminalFailures;
+
+  return {
+    totals,
+    byStep: Object.fromEntries(Object.entries(byStep).sort((a, b) => a[0].localeCompare(b[0]))),
+    deliveryRate: terminal ? delivered / terminal : null,
+    recent: recent.slice(0, 25)
+  };
+}
+
+function normalizeDeliveryStatus(value) {
+  const s = clean(value || '').toLowerCase();
+  if (s.includes('delivery') || s === 'delivered') return 'delivered';
+  if (s.includes('bounce')) return 'bounced';
+  if (s.includes('complaint')) return 'complained';
+  if (s.includes('reject')) return 'rejected';
+  if (s.includes('failure') || s.includes('failed')) return 'failed';
+  if (s.includes('send') || s === 'sent') return 'sent';
+  return 'unknown';
+}
+
 function rimoStepFromDestination(destination) {
   try {
     const url = new URL(destination || '');
@@ -290,6 +372,7 @@ function sanitizeLeadForDashboard(lead) {
     purchasedAt: lead.purchasedAt || '',
     unsubscribedAt: lead.unsubscribedAt || '',
     emails: lead.emails || {},
+    emailEvents: lead.emailEvents || {},
     clicks: lead.clicks || {},
     attribution: lead.attribution || {}
   };
@@ -370,7 +453,7 @@ function esc(s){return String(s||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&l
 function ago(s){if(!s)return ''; const ms=Date.now()-new Date(s).getTime(); const h=Math.floor(ms/36e5); if(h<1)return Math.max(0,Math.floor(ms/6e4))+'m ago'; if(h<48)return h+'h ago'; return Math.floor(h/24)+'d ago'}
 function mapRows(m){const e=Object.entries(m||{}); return e.length?e.map(([k,v])=>'<span class="pill">'+esc(k)+': '+v+'</span>').join(' '):'<span class="small">No clicks yet</span>'}
 function clickRouteRows(clicks){return (clicks||[]).slice(0,8).map(c=>'<div class="row" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>'+esc(c.step)+'</div><div>'+esc(c.target||'—')+'</div><div>'+esc(c.rimoStep||'—')+'</div><div class="small">'+esc(c.destination||'')+'</div><div>'+ago(c.timestamp)+'</div></div>').join('')}
-function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},recent:[]}; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Click Routing</h2><p style="margin-top:0">'+s.total+' tracked email clicks. Use this to confirm each email resumes the intended Rimo step.</p><div class="grid" style="grid-template-columns:repeat(3,minmax(180px,1fr));margin:12px 0"><div><div class="small">By email</div>'+mapRows(s.byStep)+'</div><div><div class="small">By target</div>'+mapRows(s.byTarget)+'</div><div><div class="small">By Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="table"><div class="head" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>Email</div><div>Target</div><div>Rimo Step</div><div>Destination</div><div>Clicked</div></div>'+clickRouteRows(s.recent)+'</div>'}
+function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},recent:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Click Routing</h2><p style="margin-top:0">SES delivery events show inbox-provider acceptance. Click routing confirms each email resumes the intended Rimo step.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Clicks by target</div>'+mapRows(s.byTarget)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:.8fr .8fr .8fr 1.4fr .8fr"><div>Email</div><div>Target</div><div>Rimo Step</div><div>Destination</div><div>Clicked</div></div>'+clickRouteRows(s.recent)+'</div>'}
 function render(){document.getElementById('stamp').textContent='Updated '+new Date(data.generatedAt).toLocaleString()+' · '+data.totalLeads+' total';
  const metricKeys=['hot_leads','completed_no_purchase','checkout_abandoners','buyers','needs_follow_up'];
  document.getElementById('metrics').innerHTML=metricKeys.map(k=>\`<div class="card metric \${current===k?'active':''}" onclick="show('\${k}')"><b>\${data.counts[k]||0}</b><span>\${labels[k]}</span></div>\`).join('');
@@ -689,14 +772,94 @@ function enqueueBuyerDayZero(env, lead, ctx) {
   ctx.waitUntil(sendStepAndRecord(env, lead, BUYER_EMAIL_STEPS[0]).catch(err => console.error('buyer_day0_send_failed', err)));
 }
 
+export function normalizeSesEvent(message = {}, envelope = {}) {
+  const mail = message.mail || {};
+  const tags = mail.tags || message.tags || {};
+  const tagValue = (name) => {
+    const value = tags[name] || tags[name.replace(/_/g, '-')] || tags[name.replace(/_/g, '')];
+    return Array.isArray(value) ? clean(value[0] || '') : clean(value || '');
+  };
+  const eventType = clean(message.eventType || message.notificationType || message.event_type || 'unknown');
+  const messageId = clean(mail.messageId || mail.messageID || message.mail?.messageId || message.messageId || '');
+  const eventPayload = message.delivery || message.bounce || message.complaint || message.reject || message.send || message.renderingFailure || {};
+  const timestamp = clean(eventPayload.timestamp || mail.timestamp || message.timestamp || envelope.Timestamp || new Date().toISOString());
+  return {
+    eventType,
+    status: normalizeDeliveryStatus(eventType),
+    messageId,
+    leadId: tagValue('lead_id'),
+    step: tagValue('step'),
+    timestamp,
+    diagnosticCode: clean(eventPayload.diagnosticCode || eventPayload.errorMessage || eventPayload.reason || eventPayload.bounceType || eventPayload.bounceSubType || ''),
+    raw: message
+  };
+}
+
+async function recordSesEvent(env, event) {
+  const messageKey = `ses_msg:${event.messageId}`;
+  const mappingRaw = await env.TIDEMEDIX_LEADS.get(messageKey);
+  let mapping = {};
+  if (mappingRaw) {
+    try { mapping = JSON.parse(mappingRaw); } catch (_) {}
+  }
+
+  const leadId = clean(event.leadId || mapping.leadId || '');
+  const step = clean(event.step || mapping.step || '');
+  const record = {
+    ...event,
+    leadId,
+    step,
+    recordedAt: new Date().toISOString(),
+    raw: undefined
+  };
+  await env.TIDEMEDIX_LEADS.put(`ses_event:${event.messageId}:${event.timestamp}:${crypto.randomUUID()}`, JSON.stringify(record), { expirationTtl: 120 * 24 * 60 * 60 });
+  if (leadId && step) await env.TIDEMEDIX_LEADS.put(messageKey, JSON.stringify({ ...mapping, leadId, step, messageId: event.messageId, updatedAt: record.recordedAt }), { expirationTtl: 120 * 24 * 60 * 60 });
+
+  if (!leadId || !step) return { updated: false, leadId, step };
+  const lead = await getLead(env, leadId);
+  if (!lead) return { updated: false, leadId, step };
+
+  lead.emailEvents = lead.emailEvents || {};
+  const prior = lead.emailEvents[step] || {};
+  const status = normalizeDeliveryStatus(event.status || event.eventType);
+  lead.emailEvents[step] = {
+    ...prior,
+    messageId: event.messageId,
+    status,
+    eventType: event.eventType,
+    lastEventAt: event.timestamp,
+    ...(event.diagnosticCode ? { diagnosticCode: event.diagnosticCode } : {})
+  };
+  if (status === 'sent') lead.emailEvents[step].sentAt = event.timestamp;
+  if (status === 'delivered') lead.emailEvents[step].deliveredAt = event.timestamp;
+  if (status === 'bounced') lead.emailEvents[step].bouncedAt = event.timestamp;
+  if (status === 'complained') lead.emailEvents[step].complainedAt = event.timestamp;
+  if (status === 'rejected') lead.emailEvents[step].rejectedAt = event.timestamp;
+  if (status === 'failed') lead.emailEvents[step].failedAt = event.timestamp;
+  lead.updatedAt = new Date().toISOString();
+  await env.TIDEMEDIX_LEADS.put(`lead:${lead.id}`, JSON.stringify(lead));
+  return { updated: true, leadId, step };
+}
+
 async function sendStepAndRecord(env, lead, step) {
-  await sendFollowup(env, lead, step);
+  const messageId = await sendFollowup(env, lead, step);
   // Re-read latest lead to avoid clobbering concurrent updates.
   const fresh = (await getLead(env, lead.id)) || lead;
+  const sentAt = new Date().toISOString();
   fresh.emails = fresh.emails || {};
-  fresh.emails[step.key] = new Date().toISOString();
+  fresh.emailEvents = fresh.emailEvents || {};
+  fresh.emails[step.key] = sentAt;
+  fresh.emailEvents[step.key] = {
+    ...(fresh.emailEvents[step.key] || {}),
+    sentAt,
+    lastEventAt: sentAt,
+    status: 'sent',
+    eventType: 'Send',
+    ...(messageId ? { messageId } : {})
+  };
   fresh.updatedAt = fresh.emails[step.key];
   await env.TIDEMEDIX_LEADS.put(`lead:${fresh.id}`, JSON.stringify(fresh));
+  if (messageId) await env.TIDEMEDIX_LEADS.put(`ses_msg:${messageId}`, JSON.stringify({ leadId: fresh.id, step: step.key, sentAt }), { expirationTtl: 120 * 24 * 60 * 60 });
 }
 
 async function sendFollowup(env, lead, step) {
@@ -706,13 +869,19 @@ async function sendFollowup(env, lead, step) {
   const html = step.template(lead, ctaUrl, unsubscribeUrl);
   const subject = typeof step.subject === 'function' ? step.subject(escapeHtml(lead.firstName || '')) : step.subject;
 
-  await sendWithAwsSes(env, {
+  return sendWithAwsSes(env, {
     from: env.FROM_EMAIL || 'TideMedix <care@tidemedix.com>',
     to: lead.email,
     replyTo: env.REPLY_TO_EMAIL || 'care@tidemedix.com',
     subject,
     html,
     text: emailHtmlToText(html),
+    configurationSetName: clean(env.AWS_SES_CONFIGURATION_SET || ''),
+    tags: [
+      { Name: 'lead_id', Value: sanitizeSesTagValue(lead.id || '') },
+      { Name: 'step', Value: sanitizeSesTagValue(step.key || 'unknown') },
+      { Name: 'source', Value: 'tidemedix_worker' }
+    ],
     headers: [
       { Name: 'List-Unsubscribe', Value: `<${unsubscribeUrl}>` },
       { Name: 'List-Unsubscribe-Post', Value: 'List-Unsubscribe=One-Click' }
@@ -731,6 +900,8 @@ async function sendWithAwsSes(env, message) {
   const body = JSON.stringify({
     FromEmailAddress: message.from,
     ...(message.replyTo ? { ReplyToAddresses: [message.replyTo] } : {}),
+    ...(message.configurationSetName ? { ConfigurationSetName: message.configurationSetName } : {}),
+    ...(Array.isArray(message.tags) && message.tags.length ? { EmailTags: message.tags.filter(t => t?.Name && t?.Value) } : {}),
     Destination: { ToAddresses: [message.to] },
     Content: {
       Simple: {
@@ -767,6 +938,12 @@ async function sendWithAwsSes(env, message) {
     body
   });
   if (!response.ok) throw new Error(`AWS SES failed ${response.status}: ${await response.text()}`);
+  const result = await response.json().catch(() => ({}));
+  return clean(result.MessageId || result.messageId || '');
+}
+
+function sanitizeSesTagValue(value) {
+  return clean(value || 'unknown').replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 256) || 'unknown';
 }
 
 function toAmzDate(date) {

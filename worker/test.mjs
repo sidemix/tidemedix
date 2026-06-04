@@ -7,11 +7,13 @@ import {
   EMAIL_STEPS,
   appendEmailAttribution,
   buildEmailClickStats,
+  buildEmailDeliveryStats,
   buildEmailClickUrl,
   buildResumeUrl,
   buildRimoResumeUrl,
   classifyLeadForDashboard,
   isCompletedNoPurchaseEvent,
+  normalizeSesEvent,
   shouldConsiderAbandonLead,
   shouldConsiderBuyerLead,
   shouldConsiderCheckoutLead,
@@ -200,4 +202,51 @@ test('Rimo completed teleform nested on lead.updated is treated as completed no 
   };
 
   assert.equal(isCompletedNoPurchaseEvent('lead.updated', payload), true);
+});
+
+test('SES delivery stats summarize per-step lifecycle status', () => {
+  const stats = buildEmailDeliveryStats([
+    {
+      id: 'lead-1',
+      email: 'one@example.com',
+      emailEvents: {
+        welcome: { status: 'delivered', messageId: 'm-1', deliveredAt: '2026-06-04T12:00:00Z' },
+        followup_2h: { status: 'bounced', messageId: 'm-2', bouncedAt: '2026-06-04T13:00:00Z' }
+      }
+    },
+    {
+      id: 'lead-2',
+      email: 'two@example.com',
+      emailEvents: {
+        welcome: { status: 'sent', messageId: 'm-3', sentAt: '2026-06-04T11:00:00Z' }
+      }
+    }
+  ]);
+  assert.equal(stats.totals.delivered, 1);
+  assert.equal(stats.totals.bounced, 1);
+  assert.equal(stats.totals.sent, 1);
+  assert.equal(stats.byStep.welcome.delivered, 1);
+  assert.equal(stats.byStep.followup_2h.bounced, 1);
+  assert.equal(stats.deliveryRate, 0.5);
+  assert.equal(stats.recent[0].step, 'followup_2h');
+});
+
+test('SES SNS notification normalizer extracts tags, event type, and message id', () => {
+  const normalized = normalizeSesEvent({
+    eventType: 'Delivery',
+    mail: {
+      messageId: '0100018f-test',
+      timestamp: '2026-06-04T12:00:00.000Z',
+      tags: {
+        lead_id: ['lead-123'],
+        step: ['complete_nopurchase_15m']
+      }
+    },
+    delivery: { timestamp: '2026-06-04T12:00:12.000Z' }
+  });
+  assert.equal(normalized.messageId, '0100018f-test');
+  assert.equal(normalized.leadId, 'lead-123');
+  assert.equal(normalized.step, 'complete_nopurchase_15m');
+  assert.equal(normalized.status, 'delivered');
+  assert.equal(normalized.timestamp, '2026-06-04T12:00:12.000Z');
 });
