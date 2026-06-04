@@ -8,6 +8,7 @@ import {
   appendEmailAttribution,
   buildEmailClickUrl,
   buildResumeUrl,
+  buildRimoResumeUrl,
   classifyLeadForDashboard,
   isCompletedNoPurchaseEvent,
   shouldConsiderAbandonLead,
@@ -34,6 +35,13 @@ test('abandoner sequence has four recovery touches back to the Rimo intake', () 
 test('resume URL returns user directly to height/current-weight step', () => {
   const url = buildResumeUrl({ id: 'lead-123' }, { SITE_URL: 'https://go.tidemedix.com' });
   assert.equal(url, 'https://go.tidemedix.com/?resume=height_weight&lead=lead-123');
+});
+
+test('Rimo resume URL returns saved intake to its latest funnel step', () => {
+  const url = buildRimoResumeUrl({
+    rimo: { leadKey: 'ldk_Z58BU5UYNUVVBPRPGXE3', lastStep: 'medvaPatientNotes' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' });
+  assert.equal(url, 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?email=ldk_Z58BU5UYNUVVBPRPGXE3');
 });
 
 test('started-no-completion leads use the abandon recovery sequence', () => {

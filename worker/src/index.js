@@ -734,6 +734,39 @@ function intakeLinkFor(env = {}) {
   return env.RIMO_INTAKE_URL || env.INTAKE_URL || 'https://try.tidemedix.com/intake/mv-xtyd5b';
 }
 
+export function buildRimoResumeUrl(lead, env = {}) {
+  const base = intakeLinkFor(env).replace(/\/$/, '');
+  const rimo = lead?.rimo || {};
+  const leadKey = clean(rimo.leadKey || lead?.leadKey || '');
+  const stepSlug = rimoStepSlug(rimo.lastStep || '');
+  const raw = stepSlug ? `${base}/${stepSlug}` : base;
+  const url = new URL(raw);
+  // Rimo's restoreTeleform client recognizes leadKey when supplied as the
+  // email query param. Without it, a return click starts a fresh intake.
+  if (leadKey) url.searchParams.set('email', leadKey);
+  return url.toString();
+}
+
+function rimoStepSlug(step) {
+  const s = clean(step);
+  if (!s) return '';
+  const explicit = {
+    medvaAreYouReady: 'medva-are-you-ready',
+    medvaWeightLossPace: 'medva-weight-loss-pace',
+    medvaCreateAccount: 'medva-create-account',
+    medvaDetailsPrograms: 'medva-details-programs',
+    medvaDetailsMedMatch: 'medva-details-med-match',
+    medvaDetailsNeeds: 'medva-details-needs',
+    medvaMedicalReview: 'medva-medical-review',
+    medvaPatientNotes: 'medva-patient-notes'
+  };
+  if (explicit[s]) return explicit[s];
+  return s
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/[_\s]+/g, '-')
+    .toLowerCase();
+}
+
 export function buildEmailClickUrl(lead, step, env = {}) {
   const baseUrl = String(env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev').replace(/\/$/, '');
   const id = encodeURIComponent(lead?.id || '');
@@ -746,7 +779,7 @@ function trackedDestinationForStep(lead, step, env, stepKey) {
   const checkoutUrl = lead.checkoutUrl || productUrl;
   const resumeUrl = buildResumeUrl(lead, env);
   const funnelUrl = funnelLinkFor(env);
-  const intakeUrl = intakeLinkFor(env);
+  const intakeUrl = buildRimoResumeUrl(lead, env);
   const raw = step?.ctaTarget === 'checkout' ? checkoutUrl : (step?.ctaTarget === 'resume' ? resumeUrl : (step?.ctaTarget === 'portal' ? portalLinkFor(env) : (step?.ctaTarget === 'funnel' ? funnelUrl : (step?.ctaTarget === 'intake' ? intakeUrl : productUrl))));
   return appendEmailAttribution(raw, stepKey);
 }
@@ -1030,6 +1063,7 @@ async function upsertLeadFromRimoPayload(env, payload, eventType, now) {
       customerId: clean(firstTruthy(payload.customer_id, payload.customerId, payload.customer?.id, payload.patient_id, payload.patient?.id, object.customerId, object.customer?.id, existing?.rimo?.customerId)),
       orderId: clean(firstTruthy(payload.order_id, payload.orderId, order?.id, existing?.rimo?.orderId)),
       leadId: clean(firstTruthy(payload.lead_id, payload.leadId, object.leadId, object.lead?.id, teleformResponse.leadId, object.id, existing?.rimo?.leadId)),
+      leadKey: clean(firstTruthy(payload.leadKey, payload.lead_key, object.leadKey, object.lead_key, object.lead?.leadKey, teleformResponse.leadKey, teleformResponse.lead_key, existing?.rimo?.leadKey)),
       responseToken: clean(firstTruthy(payload.responseToken, payload.response_token, object.responseToken, object.response_token, teleformResponse.responseToken, teleformResponse.response_token, existing?.rimo?.responseToken)),
       restoreId: clean(firstTruthy(payload.restoreId, payload.restore_id, payload.restoreToken, object.restoreId, object.restore_id, object.responseToken, teleformResponse.restoreId, teleformResponse.responseToken, existing?.rimo?.restoreId)),
       status: clean(firstTruthy(payload.status, teleformResponse.status, object.status, existing?.rimo?.status)),
