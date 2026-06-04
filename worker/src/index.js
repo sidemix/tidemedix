@@ -502,11 +502,13 @@ async function handleEmailClick(request, env) {
   const destination = trackedDestinationForStep(lead, step, env, stepKey);
   const now = new Date().toISOString();
   const eventId = crypto.randomUUID();
+  const rimoStep = step?.ctaTarget === 'intake' ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
   const clickEvent = {
     id: eventId,
     leadId: lead.id,
     step: stepKey,
     target: step?.ctaTarget || 'fallback',
+    rimoStep,
     destination,
     timestamp: now,
     userAgent: clean(request.headers.get('user-agent')),
@@ -780,11 +782,13 @@ function trackedDestinationForStep(lead, step, env, stepKey) {
   const resumeUrl = buildResumeUrl(lead, env);
   const funnelUrl = funnelLinkFor(env);
   const intakeUrl = buildRimoResumeUrl(lead, env);
-  const raw = step?.ctaTarget === 'checkout' ? checkoutUrl : (step?.ctaTarget === 'resume' ? resumeUrl : (step?.ctaTarget === 'portal' ? portalLinkFor(env) : (step?.ctaTarget === 'funnel' ? funnelUrl : (step?.ctaTarget === 'intake' ? intakeUrl : productUrl))));
-  return appendEmailAttribution(raw, stepKey);
+  const target = step?.ctaTarget || 'product';
+  const raw = target === 'checkout' ? checkoutUrl : (target === 'resume' ? resumeUrl : (target === 'portal' ? portalLinkFor(env) : (target === 'funnel' ? funnelUrl : (target === 'intake' ? intakeUrl : productUrl))));
+  const rimoStep = target === 'intake' ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
+  return appendEmailAttribution(raw, stepKey, { target, rimoStep });
 }
 
-export function appendEmailAttribution(rawUrl, stepKey) {
+export function appendEmailAttribution(rawUrl, stepKey, meta = {}) {
   const fallback = 'https://go.tidemedix.com/';
   let url;
   try {
@@ -792,10 +796,15 @@ export function appendEmailAttribution(rawUrl, stepKey) {
   } catch (_) {
     url = new URL(fallback);
   }
+  const target = clean(meta.target || 'unknown').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+  const rimoStep = clean(meta.rimoStep || '').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
   url.searchParams.set('utm_source', 'email');
   url.searchParams.set('utm_medium', 'followup');
   url.searchParams.set('utm_campaign', `tidemedix_${stepKey || 'unknown'}`);
+  url.searchParams.set('utm_content', rimoStep ? `${target}__${rimoStep}` : target);
   url.searchParams.set('src', `email_${stepKey || 'unknown'}`);
+  url.searchParams.set('tm_target', target);
+  if (rimoStep) url.searchParams.set('rimo_step', rimoStep);
   return url.toString();
 }
 

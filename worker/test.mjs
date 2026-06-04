@@ -70,7 +70,22 @@ test('email CTA URLs route through the click tracker and preserve destination pa
   assert.equal(parsed.searchParams.get('utm_source'), 'email');
   assert.equal(parsed.searchParams.get('utm_medium'), 'followup');
   assert.equal(parsed.searchParams.get('utm_campaign'), 'tidemedix_followup_24h');
+  assert.equal(parsed.searchParams.get('utm_content'), 'unknown');
+  assert.equal(parsed.searchParams.get('tm_target'), 'unknown');
   assert.equal(parsed.searchParams.get('src'), 'email_followup_24h');
+});
+
+test('email attribution can expose the target Rimo step for UTM stats', () => {
+  const destination = appendEmailAttribution(
+    'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?email=ldk_TEST',
+    'complete_nopurchase_15m',
+    { target: 'intake', rimoStep: 'medva-patient-notes' }
+  );
+  const parsed = new URL(destination);
+  assert.equal(parsed.searchParams.get('utm_campaign'), 'tidemedix_complete_nopurchase_15m');
+  assert.equal(parsed.searchParams.get('utm_content'), 'intake__medva-patient-notes');
+  assert.equal(parsed.searchParams.get('tm_target'), 'intake');
+  assert.equal(parsed.searchParams.get('rimo_step'), 'medva-patient-notes');
 });
 
 test('completed checkout sequence remains the regular follow-up track', () => {
