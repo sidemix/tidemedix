@@ -631,9 +631,14 @@ async function sendFollowup(env, lead, step) {
   await sendWithAwsSes(env, {
     from: env.FROM_EMAIL || 'TideMedix <care@tidemedix.com>',
     to: lead.email,
+    replyTo: env.REPLY_TO_EMAIL || 'care@tidemedix.com',
     subject,
     html,
-    text: emailHtmlToText(html)
+    text: emailHtmlToText(html),
+    headers: [
+      { Name: 'List-Unsubscribe', Value: `<${unsubscribeUrl}>` },
+      { Name: 'List-Unsubscribe-Post', Value: 'List-Unsubscribe=One-Click' }
+    ]
   });
 }
 
@@ -647,9 +652,11 @@ async function sendWithAwsSes(env, message) {
   const endpoint = `https://${host}/v2/email/outbound-emails`;
   const body = JSON.stringify({
     FromEmailAddress: message.from,
+    ...(message.replyTo ? { ReplyToAddresses: [message.replyTo] } : {}),
     Destination: { ToAddresses: [message.to] },
     Content: {
       Simple: {
+        ...(Array.isArray(message.headers) && message.headers.length ? { Headers: message.headers } : {}),
         Subject: { Data: message.subject, Charset: 'UTF-8' },
         Body: {
           Html: { Data: message.html, Charset: 'UTF-8' },

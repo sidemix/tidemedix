@@ -1,6 +1,12 @@
 name = "tidemedix-leads"
 main = "src/index.js"
 compatibility_date = "2026-05-04"
+workers_dev = true
+
+# Branded Worker domain for click/unsubscribe links in email.
+routes = [
+  { pattern = "links.tidemedix.com", custom_domain = true }
+]
 
 # Replace id after running:
 #   npx wrangler kv namespace create TIDEMEDIX_LEADS
@@ -18,4 +24,4 @@ CHECKOUT_URL = "https://try.tidemedix.com/intake/mv-xtyd5b"
 RIMO_INTAKE_URL = "https://try.tidemedix.com/intake/mv-xtyd5b"
 PATIENT_PORTAL_URL = "https://try.tidemedix.com/sign-in?returnTo=%2F"
 FUNNEL_URL = "https://go.tidemedix.com/"
-PUBLIC_BASE_URL = "https://tidemedix-leads.tylerdefi.workers.dev"
+PUBLIC_BASE_URL = "https://links.tidemedix.com"
