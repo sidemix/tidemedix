@@ -464,6 +464,7 @@ function sortLeads(leads) {
 
 function sanitizeLeadForDashboard(lead) {
   const dashboard = classifyLeadForDashboard(lead, new Date());
+  const attribution = lead.attribution || {};
   return {
     id: lead.id,
     email: lead.email,
@@ -496,7 +497,45 @@ function sanitizeLeadForDashboard(lead) {
     emails: lead.emails || {},
     emailEvents: lead.emailEvents || {},
     clicks: lead.clicks || {},
-    attribution: lead.attribution || {}
+    attribution,
+    utm_source: attribution.utm_source || '',
+    utm_medium: attribution.utm_medium || '',
+    utm_campaign: attribution.utm_campaign || '',
+    utm_content: attribution.utm_content || '',
+    utm_term: attribution.utm_term || '',
+    fbclid: attribution.fbclid || ''
+  };
+}
+
+const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'clickid', 'affId'];
+
+export function extractAttributionFromLeadBody(body = {}) {
+  const nested = (body.attribution && typeof body.attribution === 'object') ? body.attribution : {};
+  const attribution = { ...nested };
+
+  for (const key of ATTRIBUTION_KEYS) {
+    if (!attribution[key] && body[key]) attribution[key] = clean(body[key]);
+  }
+
+  for (const rawUrl of [body.page, body.url, body.checkoutUrl, body.referrer, body.referrerUrl]) {
+    if (!rawUrl) continue;
+    try {
+      const parsed = new URL(rawUrl);
+      for (const key of ATTRIBUTION_KEYS) {
+        const value = parsed.searchParams.get(key);
+        if (value && !attribution[key]) attribution[key] = clean(value);
+      }
+    } catch (_) {}
+  }
+
+  return Object.fromEntries(Object.entries(attribution).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+}
+
+export function mergeLeadAttribution(existingAttribution = {}, body = {}) {
+  const extracted = extractAttributionFromLeadBody(body);
+  return {
+    ...(existingAttribution || {}),
+    ...extracted
   };
 }
 
@@ -670,7 +709,7 @@ async function saveLeadFromBody(request, env, ctx, body) {
     plan: normalizePlan(body.plan),
     value: Number(body.value || (body.plan === 'tirzepatide' ? 249 : 149)),
     checkoutUrl: cleanUrl(body.checkoutUrl),
-    attribution: body.attribution || existing?.attribution || {},
+    attribution: mergeLeadAttribution(existing?.attribution || {}, body),
     quiz: body.quiz || existing?.quiz || {},
     status: statusForLeadSubmission(body, existing),
     createdAt: existing?.createdAt || now,

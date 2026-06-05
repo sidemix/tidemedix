@@ -13,7 +13,9 @@ import {
   buildResumeUrl,
   buildRimoResumeUrl,
   classifyLeadForDashboard,
+  extractAttributionFromLeadBody,
   isCompletedNoPurchaseEvent,
+  mergeLeadAttribution,
   normalizeSesEvent,
   shouldConsiderAbandonLead,
   shouldConsiderBuyerLead,
@@ -21,6 +23,33 @@ import {
   shouldConsiderCompletedNoPurchaseLead,
   statusForLeadSubmission
 } from './src/index.js';
+
+test('lead attribution is extracted from Rimo page URLs', () => {
+  const attribution = extractAttributionFromLeadBody({
+    page: 'https://go.tidemedix.com/?utm_source=facebook&utm_medium=paid&utm_campaign=Leads-WellnessCenter-Customers&utm_content=Pill%20Pull%20Out%20Box&utm_term=WellnessCenter-Customers-Lookalike&fbclid=FB123',
+    attribution: { source: 'rimo_customjs' }
+  });
+
+  assert.equal(attribution.utm_source, 'facebook');
+  assert.equal(attribution.utm_medium, 'paid');
+  assert.equal(attribution.utm_campaign, 'Leads-WellnessCenter-Customers');
+  assert.equal(attribution.utm_content, 'Pill Pull Out Box');
+  assert.equal(attribution.utm_term, 'WellnessCenter-Customers-Lookalike');
+  assert.equal(attribution.fbclid, 'FB123');
+  assert.equal(attribution.source, 'rimo_customjs');
+});
+
+test('lead attribution merge preserves existing UTMs when later Rimo posts omit them', () => {
+  const attribution = mergeLeadAttribution(
+    { utm_source: 'facebook', utm_campaign: 'Campaign A', utm_content: 'Ad A' },
+    { attribution: { source: 'rimo_customjs' }, page: 'https://try.tidemedix.com/intake/mv-xtyd5b' }
+  );
+
+  assert.equal(attribution.utm_source, 'facebook');
+  assert.equal(attribution.utm_campaign, 'Campaign A');
+  assert.equal(attribution.utm_content, 'Ad A');
+  assert.equal(attribution.source, 'rimo_customjs');
+});
 
 test('abandoner sequence has four recovery touches back to the Rimo intake', () => {
   assert.deepEqual(ABANDON_EMAIL_STEPS.map(s => s.key), [
