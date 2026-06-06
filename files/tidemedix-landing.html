@@ -457,7 +457,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .plan-card.selected { background: var(--brand-primary-soft) !important; border: 2px solid var(--brand-primary) !important; }
   .plan-name, .plan-price { color: var(--text-primary) !important; }
   .plan-price-unit { color: var(--text-secondary) !important; }
-  @media (max-width: 560px) { .quiz-question { font-size: 32px !important; } .quiz-option-label { font-size: 16px !important; } }
+  .checkout-helper { padding: 14px 16px; margin-bottom: 18px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-soft); color: var(--text-secondary); }
+  .checkout-bridge-card { padding: 22px; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-canvas); box-shadow: var(--shadow-sm); }
+  .bridge-kicker { display: inline-flex; margin-bottom: 16px; padding: 7px 10px; border-radius: 999px; background: var(--brand-primary-soft); color: var(--brand-primary-hover); font-size: 12px; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; }
+  .bridge-plan-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border-default); }
+  .bridge-label { color: var(--text-secondary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .bridge-plan-name { margin-top: 4px; color: var(--text-primary); font-size: 24px; font-weight: 800; letter-spacing: -.025em; }
+  .bridge-price { color: var(--text-primary); font-size: 24px; font-weight: 800; white-space: nowrap; }
+  .bridge-copy { margin: 18px 0; color: var(--text-secondary); font-size: 15px; line-height: 1.55; }
+  .bridge-steps { display: grid; gap: 10px; }
+  .bridge-step { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-soft); color: var(--text-primary); font-weight: 650; }
+  .bridge-step strong { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; background: var(--brand-primary); color: #fff; font-size: 13px; flex: 0 0 auto; }
+  .bridge-reassurance { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .bridge-reassurance span { padding: 7px 10px; border-radius: 999px; background: var(--success-soft); color: var(--text-primary); font-size: 12px; font-weight: 700; }
+  .bridge-cta { margin-top: 18px !important; }
+  .bridge-back { display: block; margin: 14px auto 0; border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .bridge-back:hover { color: var(--text-primary); }
+  @media (max-width: 560px) { .quiz-question { font-size: 32px !important; } .quiz-option-label { font-size: 16px !important; } .bridge-plan-row { align-items: flex-start; flex-direction: column; gap: 8px; } }
 
 
   /* APPROVED HOMEPAGE FRONT END — clean portrait hero */
@@ -782,7 +798,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     { id:'blood_pressure', q:'When was the last time you or a healthcare provider checked your blood pressure?', type:'single', options:[['within-18','Within the last 18 months'],['over-18','More than 18 months ago']] },
     { id:'anything_else', q:'Is there anything else your provider should know or any questions you want to ask?', type:'textarea_optional' },
     { id:'plan', q:'Which treatment option would you prefer your physician to review?', type:'plan' },
-    { id:'contact', q:'What is your contact information?', type:'contact' }
+    { id:'contact', q:'Where should your provider-review details be saved?', type:'contact' },
+    { id:'checkout_bridge', q:'Your assessment is saved. Here’s what happens next.', type:'checkout_bridge' }
   ];
 
   function hasAny(id, vals) {
@@ -818,6 +835,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     hydrateStep(step);
     updateProgress();
     trackMetaSafe('quiz_step_view', { quiz_step: currentIndex + 1, quiz_step_id: step.id, content_name:'Quiz Step ' + (currentIndex + 1) });
+    if (step.id === 'checkout_bridge') trackMetaSafe('checkout_bridge_view', { tier:selectedPlan, value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:'Checkout Bridge' });
     document.getElementById('quiz-overlay').scrollTop = 0;
   }
 
@@ -832,13 +850,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     if (step.type === 'yes_text') return `<div class="quiz-option" onclick="setAnswer('${step.id}', 'no', true, this)"><div><div class="quiz-option-label">No</div></div></div><div class="quiz-option" onclick="setAnswer('${step.id}', 'yes', false, this); showTextBox('${step.id}')"><div><div class="quiz-option-label">Yes</div></div></div><div id="${step.id}-text-wrap" style="display:none"><textarea class="quiz-input" id="${step.id}-text" rows="4" placeholder="${step.textLabel}" oninput="answers['${step.id}_text']=this.value"></textarea><button class="quiz-btn" onclick="nextStep()">Continue →</button></div>`;
     if (step.type === 'textarea_optional') return `<textarea class="quiz-input" id="q-anything" rows="5" placeholder="Optional" oninput="answers.anything_else_text=this.value"></textarea><button class="quiz-btn" onclick="answers.anything_else = document.getElementById('q-anything').value || 'none'; nextStep();">Continue →</button>`;
     if (step.type === 'plan') return `<div class="plan-card" id="plan-sema" onclick="selectPlan('semaglutide')"><div class="plan-top"><div><div class="plan-name">Semaglutide</div></div><div style="text-align:right"><span class="plan-price">$149</span><span class="plan-price-unit">/mo</span></div></div></div><div class="plan-card" id="plan-tirz" onclick="selectPlan('tirzepatide')"><div class="plan-top"><div><div class="plan-name">Tirzepatide</div></div><div style="text-align:right"><span class="plan-price">$249</span><span class="plan-price-unit">/mo</span></div></div></div>`;
-    if (step.type === 'contact') return `<div class="quiz-row"><div class="quiz-input-group" style="flex:1"><label class="quiz-label">First Name</label><input class="quiz-input" id="q-first" oninput="checkContact()"></div><div class="quiz-input-group" style="flex:1"><label class="quiz-label">Last Name</label><input class="quiz-input" id="q-last" oninput="checkContact()"></div></div><div class="quiz-input-group"><label class="quiz-label">Email</label><input class="quiz-input" id="q-email" type="email" value="${answers.email || ''}" oninput="checkContact()"></div><div class="quiz-input-group"><label class="quiz-label">Phone</label><input class="quiz-input" id="q-phone" type="tel" oninput="checkContact()"></div><div class="quiz-input-group"><label class="quiz-label">State</label><select class="quiz-input" id="q-state-contact" onchange="checkContact()"><option value="">Select your state</option>${Object.entries(states).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><button class="quiz-btn" id="contact-btn" onclick="goToCheckout()" disabled>Continue →</button>`;
+    if (step.type === 'contact') return `<div class="quiz-helper checkout-helper">Your assessment will be saved before payment. A US-licensed provider reviews your health information before any prescription decision is made.</div><div class="quiz-row"><div class="quiz-input-group" style="flex:1"><label class="quiz-label">First Name</label><input class="quiz-input" id="q-first" oninput="checkContact()"></div><div class="quiz-input-group" style="flex:1"><label class="quiz-label">Last Name</label><input class="quiz-input" id="q-last" oninput="checkContact()"></div></div><div class="quiz-input-group"><label class="quiz-label">Email</label><input class="quiz-input" id="q-email" type="email" value="${answers.email || ''}" oninput="checkContact()"></div><div class="quiz-input-group"><label class="quiz-label">Phone</label><input class="quiz-input" id="q-phone" type="tel" oninput="checkContact()"></div><div class="quiz-input-group"><label class="quiz-label">State</label><select class="quiz-input" id="q-state-contact" onchange="checkContact()"><option value="">Select your state</option>${Object.entries(states).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><button class="quiz-btn" id="contact-btn" onclick="nextStep()" disabled>Review My Next Step →</button>`;
+    if (step.type === 'checkout_bridge') return renderCheckoutBridge();
     return '';
   }
 
   function optionHtml(id, value, label, multi) {
     const selected = multi ? (Array.isArray(answers[id]) && answers[id].includes(value)) : answers[id] === value;
     return `<div class="quiz-option ${selected ? 'selected' : ''}" onclick="${multi ? `toggleMulti('${id}','${value}', this)` : `setAnswer('${id}','${value}', true, this)`}">${multi ? '<div class="quiz-checkbox"></div>' : ''}<div><div class="quiz-option-label">${label}</div></div></div>`;
+  }
+
+  function renderCheckoutBridge() {
+    const planName = selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide';
+    const planPrice = selectedPlan === 'tirzepatide' ? '$249/mo' : '$149/mo';
+    return `<div class="checkout-bridge-card">
+      <div class="bridge-kicker">Provider review comes before prescription decisions</div>
+      <div class="bridge-plan-row">
+        <div><div class="bridge-label">Selected treatment interest</div><div class="bridge-plan-name">${planName}</div></div>
+        <div class="bridge-price">${planPrice}</div>
+      </div>
+      <div class="bridge-copy">Next, you’ll enter secure checkout so your order can be attached to your saved assessment. You are not guaranteed medication — a US-licensed provider reviews your health history first.</div>
+      <div class="bridge-steps">
+        <div class="bridge-step"><strong>1</strong><span>Finish secure checkout</span></div>
+        <div class="bridge-step"><strong>2</strong><span>Provider reviews your assessment</span></div>
+        <div class="bridge-step"><strong>3</strong><span>If prescribed, treatment ships discreetly</span></div>
+      </div>
+      <div class="bridge-reassurance">
+        <span>Assessment saved</span>
+        <span>Privacy-first checkout</span>
+        <span>No waiting room</span>
+      </div>
+    </div><button class="quiz-btn bridge-cta" onclick="goToCheckout()">Continue to Secure Checkout →</button><button class="bridge-back" onclick="currentIndex -= 1; renderStep();">← Edit my contact details</button>`;
   }
 
   function hydrateStep(step) {
@@ -925,7 +967,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const healthProfile = ['height_weight','goal_weight','sex','pregnancy','breastfeeding'];
     const medicalHistory = ['contraindications','eating_symptoms','eating_diagnosis','eating_remission','mental_health','self_harm','gi_conditions','prior_glp1','current_med','medications','allergies','activity','blood_pressure'];
     const almostDone = ['anything_else','calculating'];
-    const yourResults = ['plan','contact','eligible','provider_review','not_eligible'];
+    const yourResults = ['plan','contact','checkout_bridge','eligible','provider_review','not_eligible'];
 
     if (!step) return 'About you';
     if (aboutYou.includes(step.id)) return 'About you';
@@ -1001,9 +1043,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }
 
   async function goToCheckout() {
-    const contactBtn = document.getElementById('contact-btn');
-    contactBtn.disabled = true;
-    contactBtn.textContent = 'Sending you to checkout…';
+    const checkoutBtn = document.querySelector('.bridge-cta') || document.getElementById('contact-btn');
+    if (checkoutBtn) {
+      checkoutBtn.disabled = true;
+      checkoutBtn.textContent = 'Sending you to secure checkout…';
+    }
 
     const params = new URLSearchParams();
     params.set('product', selectedPlan);
@@ -1038,6 +1082,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     params.set('affId', affId);
     params.set('clickid', clickid);
 
+    trackMetaSafe('checkout_bridge_continue', { tier:selectedPlan, value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:'Checkout Bridge Continue' });
     trackMetaSafe('lead_submit', { value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide', tier:selectedPlan }, 'Lead');
     trackMetaSafe('begin_checkout', { value:selectedPlan === 'tirzepatide' ? 249 : 149, currency:'USD', content_name:selectedPlan === 'tirzepatide' ? 'Tirzepatide' : 'Semaglutide', tier:selectedPlan }, 'InitiateCheckout');
 
