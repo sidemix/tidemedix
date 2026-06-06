@@ -8,6 +8,7 @@ import {
   appendEmailAttribution,
   buildEmailClickStats,
   buildEmailDeliveryStats,
+  buildMetaPurchaseEventPayload,
   buildRouteAuditRow,
   buildEmailClickUrl,
   buildResumeUrl,
@@ -297,6 +298,38 @@ test('SES delivery stats summarize per-step lifecycle status', () => {
   assert.equal(stats.byStep.followup_2h.bounced, 1);
   assert.equal(stats.deliveryRate, 0.5);
   assert.equal(stats.recent[0].step, 'followup_2h');
+});
+
+test('Meta Purchase CAPI payload hashes customer data and preserves value/currency', async () => {
+  const request = new Request('https://links.tidemedix.com/api/purchase', {
+    headers: {
+      'cf-connecting-ip': '203.0.113.10',
+      'user-agent': 'node-test-agent'
+    }
+  });
+  const payload = await buildMetaPurchaseEventPayload({
+    id: 'lead-123',
+    email: 'Buyer@Example.com ',
+    phone: '(941) 555-1212',
+    firstName: 'Jane',
+    lastName: 'Buyer',
+    checkoutUrl: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout',
+    value: 149,
+    purchase: { orderId: 'order-789', amount: 149, currency: 'USD' },
+    attribution: { fbclid: 'FBCLID123' }
+  }, request, {});
+
+  const event = payload.data[0];
+  assert.equal(event.event_name, 'Purchase');
+  assert.equal(event.event_id, 'order-789');
+  assert.equal(event.action_source, 'website');
+  assert.equal(event.event_source_url, 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout');
+  assert.equal(event.custom_data.currency, 'USD');
+  assert.equal(event.custom_data.value, 149);
+  assert.equal(event.user_data.em[0], '6a6c26195c3682faa816966af789717c3bfa834eee6c599d667d2b3429c27cfd');
+  assert.equal(event.user_data.client_ip_address, '203.0.113.10');
+  assert.equal(event.user_data.client_user_agent, 'node-test-agent');
+  assert.match(event.user_data.fbc, /^fb\.1\.\d+\.FBCLID123$/);
 });
 
 test('SES SNS notification normalizer extracts tags, event type, and message id', () => {

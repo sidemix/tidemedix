@@ -759,6 +759,7 @@ async function handlePurchase(request, env, ctx) {
   if (!result.email) return json(request, { ok: false, error: 'email_required' }, 400);
   if (!result.leadId) return json(request, { ok: false, error: 'lead_not_found' }, 404);
   enqueueBuyerDayZero(env, result.lead, ctx);
+  enqueueMetaPurchaseEvent(env, result.lead, request, body, ctx);
   return json(request, { ok: true });
 }
 
@@ -798,6 +799,7 @@ async function handleRimoWebhook(request, env, ctx) {
   if (isPurchaseEvent(eventType, payload)) {
     purchaseResult = await markPurchaseFromPayload(env, payload, now);
     enqueueBuyerDayZero(env, purchaseResult?.lead, ctx);
+    enqueueMetaPurchaseEvent(env, purchaseResult?.lead, request, payload, ctx);
   }
 
   return json(request, {
@@ -934,6 +936,11 @@ export function statusForLeadSubmission(body, existing) {
 function enqueueBuyerDayZero(env, lead, ctx) {
   if (!lead || !shouldConsiderBuyerLead(lead) || lead.emails?.buyer_day0 || !ctx?.waitUntil) return;
   ctx.waitUntil(sendStepAndRecord(env, lead, BUYER_EMAIL_STEPS[0]).catch(err => console.error('buyer_day0_send_failed', err)));
+}
+
+function enqueueMetaPurchaseEvent(env, lead, request, payload, ctx) {
+  if (!lead || !shouldConsiderBuyerLead(lead) || !ctx?.waitUntil) return;
+  ctx.waitUntil(sendMetaPurchaseEvent(env, lead, request, payload).catch(err => console.error('meta_purchase_send_failed', err)));
 }
 
 export function normalizeSesEvent(message = {}, envelope = {}) {
@@ -1446,6 +1453,108 @@ function emailHtmlToText(html) {
     .replace(/&quot;/g, '"')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+// ---------- Meta Conversions API ----------
+
+async function sendMetaPurchaseEvent(env, lead, request, payload = {}) {
+  const accessToken = clean(env.META_CAPI_ACCESS_TOKEN || env.META_ACCESS_TOKEN || env.FACEBOOK_CAPI_ACCESS_TOKEN || '');
+  const pixelId = clean(env.META_PIXEL_ID || '1282887087139606');
+  if (!accessToken || !pixelId) return { ok: false, skipped: 'missing_meta_capi_config' };
+
+  const eventPayload = await buildMetaPurchaseEventPayload(lead, request, payload);
+  const endpoint = `https://graph.facebook.com/v19.0/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(accessToken)}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(eventPayload)
+  });
+  const responseText = await response.text();
+  let responseJson = {};
+  try { responseJson = responseText ? JSON.parse(responseText) : {}; } catch (_) { responseJson = { raw: responseText.slice(0, 500) }; }
+
+  const now = new Date().toISOString();
+  const fresh = (await getLead(env, lead.id)) || lead;
+  fresh.meta = fresh.meta || {};
+  fresh.meta.purchase = {
+    sentAt: now,
+    ok: response.ok,
+    eventId: eventPayload.data?.[0]?.event_id || '',
+    status: response.status,
+    traceId: clean(responseJson.fbtrace_id || '')
+  };
+  fresh.updatedAt = now;
+  await env.TIDEMEDIX_LEADS.put(`lead:${fresh.id}`, JSON.stringify(fresh));
+  await env.TIDEMEDIX_LEADS.put(`meta_event:${fresh.id}:purchase:${Date.now()}`, JSON.stringify({
+    leadId: fresh.id,
+    eventName: 'Purchase',
+    eventId: fresh.meta.purchase.eventId,
+    sentAt: now,
+    ok: response.ok,
+    status: response.status,
+    traceId: fresh.meta.purchase.traceId,
+    response: sanitizeMetaResponse(responseJson)
+  }), { expirationTtl: 120 * 24 * 60 * 60 });
+
+  if (!response.ok) throw new Error(`Meta CAPI Purchase failed ${response.status}: ${responseText.slice(0, 300)}`);
+  return { ok: true, eventId: fresh.meta.purchase.eventId, traceId: fresh.meta.purchase.traceId };
+}
+
+export async function buildMetaPurchaseEventPayload(lead, request = null, payload = {}) {
+  const eventTime = Math.floor(Date.now() / 1000);
+  const purchase = lead?.purchase || {};
+  const order = payload.order || payload.data?.order || payload.checkout || payload.data?.checkout || payload;
+  const amount = Number(purchase.amount || amountFromPayload(payload) || lead?.value || 0);
+  const eventId = clean(firstTruthy(purchase.orderId, payload.orderId, payload.order_id, order?.id, lead?.rimo?.orderId, lead?.id));
+  const attribution = lead?.attribution || {};
+  const fbclid = clean(firstTruthy(attribution.fbclid, payload.fbclid, payload.attribution?.fbclid));
+  const userData = {
+    em: lead?.email ? [await sha256Hex(normalizeEmail(lead.email))] : [],
+    ph: lead?.phone ? [await sha256Hex(normalizePhoneForHash(lead.phone))] : [],
+    fn: lead?.firstName ? [await sha256Hex(clean(lead.firstName).toLowerCase())] : [],
+    ln: lead?.lastName ? [await sha256Hex(clean(lead.lastName).toLowerCase())] : [],
+    client_ip_address: clean(request?.headers?.get('cf-connecting-ip') || request?.headers?.get('x-forwarded-for') || ''),
+    client_user_agent: clean(request?.headers?.get('user-agent') || ''),
+    fbc: clean(firstTruthy(attribution.fbc, payload.fbc, fbclid ? `fb.1.${eventTime}.${fbclid}` : '')),
+    fbp: clean(firstTruthy(attribution.fbp, payload.fbp, ''))
+  };
+  for (const [key, value] of Object.entries(userData)) {
+    if (Array.isArray(value) && !value.length) delete userData[key];
+    if (!Array.isArray(value) && !value) delete userData[key];
+  }
+
+  return {
+    data: [{
+      event_name: 'Purchase',
+      event_time: eventTime,
+      event_id: eventId,
+      action_source: 'website',
+      event_source_url: cleanUrl(firstTruthy(lead?.checkoutUrl, attribution.page, attribution.url, payload.checkoutUrl, payload.page, 'https://try.tidemedix.com/intake/mv-xtyd5b')),
+      user_data: userData,
+      custom_data: {
+        currency: clean(firstTruthy(purchase.currency, payload.currency, order?.currency, 'USD')) || 'USD',
+        value: Number.isFinite(amount) ? amount : 0
+      }
+    }]
+  };
+}
+
+function sanitizeMetaResponse(response = {}) {
+  return {
+    events_received: response.events_received,
+    messages: response.messages,
+    fbtrace_id: clean(response.fbtrace_id || ''),
+    error: response.error ? {
+      message: clean(response.error.message || ''),
+      type: clean(response.error.type || ''),
+      code: response.error.code,
+      error_subcode: response.error.error_subcode
+    } : undefined
+  };
+}
+
+function normalizePhoneForHash(value) {
+  return String(value || '').replace(/[^0-9]/g, '');
 }
 
 // ---------- Helpers ----------
