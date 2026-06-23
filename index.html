@@ -337,7 +337,8 @@
     }
     .lifestyle-copy p { margin: 0; color: var(--muted); line-height: 1.58; font-size: 16px; }
     .lifestyle-images {
-      min-height: 360px;
+      height: 300px;
+      min-height: 300px;
       overflow: hidden;
       border-radius: 24px;
       background: var(--soft);
@@ -345,7 +346,7 @@
     .lifestyle-images img {
       width: 100%;
       height: 100%;
-      min-height: 360px;
+      min-height: 300px;
       object-fit: cover;
       object-position: center center;
       display: block;
@@ -394,6 +395,16 @@
       background: #fff;
       box-shadow: var(--shadow-sm);
     }
+    .proof-photo {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      margin-bottom: 14px;
+      border: 4px solid #fff;
+      box-shadow: 0 10px 24px rgba(26,31,46,.14);
+    }
     .proof-stars {
       color: #D89A35;
       font-size: 15px;
@@ -423,8 +434,10 @@
 
     .treatment-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      max-width: 780px;
+      margin: 0 auto;
     }
     .treatment-card {
       overflow: hidden;
@@ -710,7 +723,7 @@
         <a href="files/faq.html">FAQ</a>
       </nav>
       <div class="nav-actions">
-        <a class="btn btn-primary" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+        <a class="btn btn-primary" href="https://try.tidemedix.com/intake/wm-4ltue5" data-cta>Start assessment</a>
       </div>
     </div>
   </header>
@@ -723,7 +736,7 @@
           <h1>Modern medical care for weight, longevity, and everyday confidence.</h1>
           <p class="lead">TideMedix connects you with online assessment, licensed provider review, and treatment options when clinically appropriate — without waiting rooms or insurance headaches.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start your assessment</a>
+            <a class="btn btn-primary" href="https://try.tidemedix.com/intake/wm-4ltue5" data-cta>Start your assessment</a>
             <a class="btn btn-secondary" href="#treatments">Explore treatments</a>
           </div>
           <div class="trust-row" aria-label="Trust points">
@@ -783,7 +796,7 @@
             <p>Take the next step from home with a process designed to feel calm, private, and backed by provider review — not pressure or hype.</p>
           </div>
           <div class="lifestyle-images">
-            <img src="ProductHeroImages/lifestyle-hand-wide.jpeg?v=20260602-producthero" alt="Woman seated near a window representing private online care from home" />
+            <img src="ProductHeroImages/lifestyle-glp1-vial-hand-wide.jpg?v=20260611-glp1-generic" alt="Generic GLP-1 weight care vial held at home in a calm kitchen setting" />
           </div>
         </div>
 
@@ -798,18 +811,21 @@
           </div>
           <div class="proof-grid">
             <article class="proof-card">
+              <img class="proof-photo" src="assets/testimonial-woman-private-step.jpg?v=20260623" alt="TideMedix patient testimonial portrait" loading="lazy" />
               <div class="proof-stars" aria-hidden="true">★★★★★</div>
               <h4>Private first step</h4>
               <p>Patients can start with a focused online intake from home instead of booking a visit just to learn whether treatment may be appropriate.</p>
               <span class="proof-attribution">Common patient priority</span>
             </article>
             <article class="proof-card">
+              <img class="proof-photo" src="assets/testimonial-woman-provider-review.jpg?v=20260623" alt="TideMedix patient testimonial portrait" loading="lazy" />
               <div class="proof-stars" aria-hidden="true">★★★★★</div>
               <h4>Provider review before treatment</h4>
               <p>The process is built around clinical review first, so treatment is only considered when the health information supports it.</p>
               <span class="proof-attribution">Trust signal</span>
             </article>
             <article class="proof-card">
+              <img class="proof-photo" src="assets/testimonial-woman-clear-next-steps.jpg?v=20260623" alt="TideMedix patient testimonial portrait" loading="lazy" />
               <div class="proof-stars" aria-hidden="true">★★★★★</div>
               <h4>Clear next steps</h4>
               <p>Eligible patients see the care path, plan options, and handoff clearly — without aggressive claims or pressure to decide blindly.</p>
@@ -817,6 +833,8 @@
             </article>
           </div>
         </div>
+
+        
       </div>
     </section>
 
@@ -830,38 +848,20 @@
         </div>
 
         <div class="treatment-grid">
-          <a class="treatment-card" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta aria-label="Start assessment for Tirzepatide oral pill">
-            <div class="treatment-image"><img src="ProductHeroImages/glp1-tirzepatide-oral-pill.jpeg?v=20260603-glp1-products" alt="Tirzepatide oral pill box and blister pack" /></div>
+          <a class="treatment-card" href="https://try.tidemedix.com/intake/wm-4ltue5" data-cta aria-label="Start assessment for Tirzepatide">
+            <div class="treatment-image"><img src="ProductHeroImages/explore-tirzepatide-glp1-vial-counter.jpg?v=20260611-counter-glp1" alt="Generic GLP-1 weight care vial on a clean bathroom counter" /></div>
             <div class="treatment-body">
-              <h3>Tirzepatide Oral Pill</h3>
-              <p>A needle-free daily routine designed for simplicity and consistency.</p>
+              <h3>Tirzepatide</h3>
+              <p>A GLP-1 weight-care path reviewed by a licensed provider when clinically appropriate.</p>
               <span class="card-action">Start assessment →</span>
             </div>
           </a>
 
-          <a class="treatment-card" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta aria-label="Start assessment for Tirzepatide injection shot">
-            <div class="treatment-image"><img src="ProductHeroImages/glp1-tirzepatide-injection.jpeg?v=20260603-glp1-products" alt="Tirzepatide injection vial" /></div>
+          <a class="treatment-card" href="https://try.tidemedix.com/intake/wm-4ltue5" data-cta aria-label="Start assessment for Semaglutide">
+            <div class="treatment-image"><img src="ProductHeroImages/explore-semaglutide-glp1-vial-counter.jpg?v=20260611-counter-glp1" alt="Generic GLP-1 weight care vial on a clean kitchen counter" /></div>
             <div class="treatment-body">
-              <h3>Tirzepatide Injection Shot</h3>
-              <p>A weekly injection option often selected for a more aggressive treatment path.</p>
-              <span class="card-action">Start assessment →</span>
-            </div>
-          </a>
-
-          <a class="treatment-card" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta aria-label="Start assessment for Semaglutide oral pill">
-            <div class="treatment-image"><img src="ProductHeroImages/glp1-semaglutide-oral-pill.jpeg?v=20260603-glp1-products" alt="Semaglutide oral pill box and blister pack" /></div>
-            <div class="treatment-body">
-              <h3>Semaglutide Oral Pill</h3>
-              <p>A simple oral GLP-1 path for patients who want to avoid injections.</p>
-              <span class="card-action">Start assessment →</span>
-            </div>
-          </a>
-
-          <a class="treatment-card" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta aria-label="Start assessment for Semaglutide injection shot">
-            <div class="treatment-image"><img src="ProductHeroImages/glp1-semaglutide-injection.jpeg?v=20260603-glp1-products" alt="Semaglutide injection vial" /></div>
-            <div class="treatment-body">
-              <h3>Semaglutide Injection Shot</h3>
-              <p>A weekly injection path with provider guidance and prescription review.</p>
+              <h3>Semaglutide</h3>
+              <p>A GLP-1 weight-care path reviewed by a licensed provider when clinically appropriate.</p>
               <span class="card-action">Start assessment →</span>
             </div>
           </a>
@@ -910,7 +910,7 @@
     <section class="section section-soft" aria-labelledby="weight-heading">
       <div class="wrap">
         <div class="feature-band">
-          <img src="ProductHeroImages/feature-glp1-vial-wide.jpeg?v=20260602-producthero" alt="TideMedix GLP-1 vial product rendering" />
+          <img src="ProductHeroImages/feature-glp1-vial-bathroom-counter.jpg?v=20260611-bathroom-counter" alt="Generic GLP-1 weight care vial on a clean bathroom counter" />
           <div class="feature-content">
             <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Weight care pathway</div>
             <h2 id="weight-heading">GLP-1 care with a safer, clearer intake process.</h2>
@@ -973,7 +973,7 @@
           <h2 id="cta-heading">Start with a focused online assessment.</h2>
           <p>Answer a few guided questions so TideMedix can route you toward the right next step for GLP-1 weight care.</p>
         </div>
-        <a class="btn btn-light" href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+        <a class="btn btn-light" href="https://try.tidemedix.com/intake/wm-4ltue5" data-cta>Start assessment</a>
       </div>
     </section>
   </main>
@@ -987,7 +987,7 @@
     </div>
     <div class="tm-footer-col">
       <h3>Care</h3>
-      <a href="https://try.tidemedix.com/intake/mv-xtyd5b" data-cta>Start assessment</a>
+      <a href="https://try.tidemedix.com/intake/wm-4ltue5" data-cta>Start assessment</a>
       <a href="#treatments">Treatment paths</a>
       <a href="#how">How it works</a>
     </div>
