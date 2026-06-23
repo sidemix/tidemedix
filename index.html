@@ -351,6 +351,76 @@
       display: block;
     }
 
+    .social-proof {
+      margin-top: 36px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      background: linear-gradient(180deg, #fff 0%, var(--soft) 100%);
+      box-shadow: var(--shadow-md);
+    }
+    .social-proof-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+    .social-proof-head h3 {
+      margin: 0;
+      max-width: 620px;
+      font-size: clamp(26px, 3vw, 38px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+      text-wrap: balance;
+    }
+    .social-proof-note {
+      margin: 8px 0 0;
+      max-width: 640px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.56;
+    }
+    .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .proof-card {
+      min-height: 100%;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+    .proof-stars {
+      color: #D89A35;
+      font-size: 15px;
+      letter-spacing: .08em;
+      margin-bottom: 14px;
+    }
+    .proof-card h4 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .proof-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .proof-attribution {
+      display: block;
+      margin-top: 16px;
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
     .treatment-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -532,7 +602,9 @@
       .hero-grid { padding: 44px 0 54px; gap: 32px; }
       .hero-card { aspect-ratio: 4 / 5; min-height: 0; max-height: 720px; }
       .hero-card img { object-position: 58% center; }
-      .promise-grid, .treatment-grid, .safety-grid { grid-template-columns: 1fr; }
+      .promise-grid, .treatment-grid, .safety-grid, .proof-grid { grid-template-columns: 1fr; }
+      .social-proof-head { display: block; }
+      .social-proof .pill { width: fit-content; }
       .lifestyle-panel { grid-template-columns: 1fr; }
       .lifestyle-images { min-height: 300px; }
       .lifestyle-images img { min-height: 300px; }
@@ -561,6 +633,8 @@
       .certification-card { padding: 20px; }
       .certification-card img { width: 112px; }
       .section { padding: 56px 0; }
+      .social-proof { padding: 20px; border-radius: 26px; }
+      .proof-card { padding: 18px; }
       .lifestyle-panel { padding: 12px; border-radius: 26px; }
       .lifestyle-copy { padding: 18px 10px 8px; }
       .lifestyle-images { gap: 10px; min-height: 240px; }
@@ -710,6 +784,37 @@
           </div>
           <div class="lifestyle-images">
             <img src="ProductHeroImages/lifestyle-hand-wide.jpeg?v=20260602-producthero" alt="Woman seated near a window representing private online care from home" />
+          </div>
+        </div>
+
+        <div class="social-proof" aria-labelledby="social-proof-heading">
+          <div class="social-proof-head">
+            <div>
+              <span class="tag">Patient confidence</span>
+              <h3 id="social-proof-heading">The reasons patients choose TideMedix before starting.</h3>
+              <p class="social-proof-note">The next step should feel safe, clear, and medically responsible before someone begins an assessment.</p>
+            </div>
+            <span class="pill">★★★★★ Calm, clear, provider-reviewed</span>
+          </div>
+          <div class="proof-grid">
+            <article class="proof-card">
+              <div class="proof-stars" aria-hidden="true">★★★★★</div>
+              <h4>Private first step</h4>
+              <p>Patients can start with a focused online intake from home instead of booking a visit just to learn whether treatment may be appropriate.</p>
+              <span class="proof-attribution">Common patient priority</span>
+            </article>
+            <article class="proof-card">
+              <div class="proof-stars" aria-hidden="true">★★★★★</div>
+              <h4>Provider review before treatment</h4>
+              <p>The process is built around clinical review first, so treatment is only considered when the health information supports it.</p>
+              <span class="proof-attribution">Trust signal</span>
+            </article>
+            <article class="proof-card">
+              <div class="proof-stars" aria-hidden="true">★★★★★</div>
+              <h4>Clear next steps</h4>
+              <p>Eligible patients see the care path, plan options, and handoff clearly — without aggressive claims or pressure to decide blindly.</p>
+              <span class="proof-attribution">Experience theme</span>
+            </article>
           </div>
         </div>
       </div>
