@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   ABANDON_EMAIL_STEPS,
   BUYER_EMAIL_STEPS,
@@ -8,11 +9,16 @@ import {
   appendEmailAttribution,
   buildEmailClickStats,
   buildEmailDeliveryStats,
+  buildLeadEventStats,
   buildMetaPurchaseEventPayload,
   buildRouteAuditRow,
   buildEmailClickUrl,
+  buildCheckoutBridgeUrl,
+  buildBridgeContinueClickUrl,
+  buildCheckoutBridgeContinueUrl,
   buildResumeUrl,
   buildRimoResumeUrl,
+  isRetatrutideLead,
   classifyLeadForDashboard,
   extractAttributionFromLeadBody,
   isCompletedNoPurchaseEvent,
@@ -24,6 +30,22 @@ import {
   shouldConsiderCompletedNoPurchaseLead,
   statusForLeadSubmission
 } from './src/index.js';
+
+test('lead-event stats reconcile raw submissions against new unique leads', () => {
+  const stats = buildLeadEventStats([
+    { source: 'go_email_capture', leadType: 'quiz_abandon', status: 'quiz_abandoned', isNewLead: true, createdAt: '2026-06-09T10:00:00Z' },
+    { source: 'checkout_bridge', leadType: 'checkout_started', status: 'checkout_started', isNewLead: false, createdAt: '2026-06-09T10:05:00Z' },
+    { source: 'rimo_customjs', leadType: 'rimo_customjs', status: 'completed_no_purchase', isNewLead: false, createdAt: '2026-06-10T10:00:00Z' }
+  ]);
+
+  assert.equal(stats.totalEvents, 3);
+  assert.equal(stats.newUniqueLeads, 1);
+  assert.equal(stats.repeatSubmissions, 2);
+  assert.equal(stats.bySource.go_email_capture, 1);
+  assert.equal(stats.bySource.checkout_bridge, 1);
+  assert.equal(stats.bySource.rimo_customjs, 1);
+  assert.equal(stats.byDay['2026-06-09'], 2);
+});
 
 test('lead attribution is extracted from Rimo page URLs', () => {
   const attribution = extractAttributionFromLeadBody({
@@ -78,6 +100,32 @@ test('Rimo resume URL returns saved intake to its latest funnel step', () => {
   assert.equal(url, 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?email=ldk_Z58BU5UYNUVVBPRPGXE3');
 });
 
+test('Retatrutide follow-up links resume the dedicated Retatrutide checkout funnel', () => {
+  const lead = {
+    id: 'lead-rt-123',
+    attribution: {
+      utm_campaign: 'Leads-WellnessCenter-Customers',
+      utm_content: 'Ad 1 — Clinic / Provider Visual',
+      tm_target: 'retatrutide_landing'
+    },
+    rimo: { leadKey: 'ldk_RT_TEST', lastStep: 'checkout' }
+  };
+
+  assert.equal(isRetatrutideLead(lead), true);
+
+  const resume = buildRimoResumeUrl(lead, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' });
+  const parsedResume = new URL(resume);
+  assert.equal(parsedResume.origin + parsedResume.pathname, 'https://try.tidemedix.com/intake/rt-qbe927/checkout');
+  assert.equal(parsedResume.searchParams.get('email'), 'ldk_RT_TEST');
+
+  const continueUrl = buildCheckoutBridgeContinueUrl(lead, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' }, 'complete_nopurchase_15m');
+  const parsedContinue = new URL(continueUrl);
+  assert.equal(parsedContinue.origin + parsedContinue.pathname, 'https://try.tidemedix.com/intake/rt-qbe927/checkout');
+  assert.equal(parsedContinue.searchParams.get('email'), 'ldk_RT_TEST');
+  assert.equal(parsedContinue.searchParams.get('tm_target'), 'intake');
+  assert.equal(parsedContinue.searchParams.get('rimo_step'), 'checkout');
+});
+
 test('started-no-completion leads use the abandon recovery sequence', () => {
   assert.equal(statusForLeadSubmission({ leadType: 'quiz_abandon' }, null), 'quiz_abandoned');
   assert.equal(statusForLeadSubmission({ leadType: 'checkout_started' }, null), 'checkout_started');
@@ -124,12 +172,12 @@ test('email attribution can expose the target Rimo step for UTM stats', () => {
 
 test('dashboard email click stats summarize target Rimo steps', () => {
   const stats = buildEmailClickStats([
-    { step: 'complete_nopurchase_15m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes&tm_target=intake', timestamp: '2026-06-04T01:00:00Z' },
-    { step: 'complete_nopurchase_15m', target: 'intake', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes&tm_target=intake', timestamp: '2026-06-04T01:05:00Z' },
+    { step: 'abandon_20m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes&tm_target=intake', timestamp: '2026-06-04T01:00:00Z' },
+    { step: 'abandon_20m', target: 'intake', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?rimo_step=medva-patient-notes&tm_target=intake', timestamp: '2026-06-04T01:05:00Z' },
     { step: 'buyer_day0', target: 'portal', destination: 'https://try.tidemedix.com/sign-in?tm_target=portal', timestamp: '2026-06-04T01:10:00Z' }
   ]);
   assert.equal(stats.total, 3);
-  assert.equal(stats.byStep.complete_nopurchase_15m, 2);
+  assert.equal(stats.byStep.abandon_20m, 2);
   assert.equal(stats.byTarget.intake, 2);
   assert.equal(stats.byRimoStep['medva-patient-notes'], 2);
   assert.equal(stats.routeStatus.ok, 3);
@@ -140,7 +188,7 @@ test('dashboard email click stats summarize target Rimo steps', () => {
 
 test('route audit flags expected vs actual email destinations', () => {
   const ok = buildRouteAuditRow({
-    step: 'complete_nopurchase_15m',
+    step: 'abandon_20m',
     target: 'intake',
     rimoStep: 'medva-patient-notes',
     destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes?tm_target=intake&rimo_step=medva-patient-notes'
@@ -152,7 +200,7 @@ test('route audit flags expected vs actual email destinations', () => {
   assert.equal(ok.status, 'ok');
 
   const mismatch = buildRouteAuditRow({
-    step: 'complete_nopurchase_15m',
+    step: 'abandon_20m',
     target: 'intake',
     rimoStep: 'medva-patient-notes',
     destination: 'https://tidemedix.com/therapy/weight-loss-glp-1/?tm_target=product'
@@ -161,12 +209,31 @@ test('route audit flags expected vs actual email destinations', () => {
   assert.equal(mismatch.actualTarget, 'product');
   assert.equal(mismatch.status, 'bad');
   assert.equal(mismatch.statusLabel, 'Needs Review');
+
+  const bridgeOk = buildRouteAuditRow({
+    step: 'complete_nopurchase_15m',
+    target: 'intake',
+    rimoStep: 'medva-payment',
+    destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-payment?tm_target=intake&rimo_step=medva-payment',
+    bridgeDestination: 'https://links.tidemedix.com/checkout-bridge?id=lead-123&step=complete_nopurchase_15m'
+  });
+  assert.equal(bridgeOk.expectedTarget, 'bridge');
+  assert.equal(bridgeOk.actualTarget, 'intake');
+  assert.equal(bridgeOk.expectedRimoStep, 'medva-payment');
+  assert.equal(bridgeOk.status, 'ok');
+
+  const bridgeHostOnly = buildRouteAuditRow({
+    step: 'complete_nopurchase_15m',
+    target: 'bridge',
+    destination: 'https://links.tidemedix.com/checkout-bridge?id=lead-123&step=complete_nopurchase_15m&tm_target=bridge'
+  });
+  assert.equal(bridgeHostOnly.status, 'bad');
 });
 
 test('route audit sorts Needs Review rows ahead of OK rows', () => {
   const stats = buildEmailClickStats([
     { step: 'welcome', target: 'checkout', destination: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?tm_target=checkout', timestamp: '2026-06-04T02:00:00Z' },
-    { step: 'complete_nopurchase_15m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://tidemedix.com/therapy/weight-loss-glp-1/?tm_target=product', timestamp: '2026-06-04T01:00:00Z' }
+    { step: 'abandon_20m', target: 'intake', rimoStep: 'medva-patient-notes', destination: 'https://tidemedix.com/therapy/weight-loss-glp-1/?tm_target=product', timestamp: '2026-06-04T01:00:00Z' }
   ]);
   assert.equal(stats.routeAudit[0].status, 'bad');
   assert.equal(stats.routeAudit[0].statusLabel, 'Needs Review');
@@ -225,13 +292,97 @@ test('completed-no-purchase sequence targets finished intake without a paid orde
   assert.equal(COMPLETED_NO_PURCHASE_EMAIL_STEPS[1].delayMs, 24 * 60 * 60 * 1000);
   assert.equal(COMPLETED_NO_PURCHASE_EMAIL_STEPS[2].delayMs, 3 * 24 * 60 * 60 * 1000);
   assert.equal(COMPLETED_NO_PURCHASE_EMAIL_STEPS[3].delayMs, 7 * 24 * 60 * 60 * 1000);
-  assert.ok(COMPLETED_NO_PURCHASE_EMAIL_STEPS.every(s => s.ctaTarget === 'intake'));
+  assert.ok(COMPLETED_NO_PURCHASE_EMAIL_STEPS.every(s => s.ctaTarget === 'bridge'));
+
+  const bridgeUrl = buildCheckoutBridgeUrl({ id: 'lead-123' }, { PUBLIC_BASE_URL: 'https://links.tidemedix.com' }, 'complete_nopurchase_15m');
+  const parsedBridge = new URL(bridgeUrl);
+  assert.equal(parsedBridge.origin + parsedBridge.pathname, 'https://links.tidemedix.com/checkout-bridge');
+  assert.equal(parsedBridge.searchParams.get('id'), 'lead-123');
+  assert.equal(parsedBridge.searchParams.get('tm_target'), 'bridge');
+  assert.equal(parsedBridge.searchParams.get('utm_campaign'), 'tidemedix_complete_nopurchase_15m');
+
+  const bridgeContinueClickUrl = buildBridgeContinueClickUrl({ id: 'lead-123' }, { PUBLIC_BASE_URL: 'https://links.tidemedix.com' }, 'complete_nopurchase_15m');
+  const parsedContinueClick = new URL(bridgeContinueClickUrl);
+  assert.equal(parsedContinueClick.origin + parsedContinueClick.pathname, 'https://links.tidemedix.com/api/bridge-continue');
+  assert.equal(parsedContinueClick.searchParams.get('id'), 'lead-123');
+  assert.equal(parsedContinueClick.searchParams.get('step'), 'complete_nopurchase_15m');
 
   const completed = { email: 'done@example.com', status: 'completed_no_purchase', completedNoPurchaseAt: new Date().toISOString(), rimo: { progress: 100, status: 'COMPLETED' }, emails: {} };
   const buyer = { email: 'buyer@example.com', status: 'purchased', purchasedAt: new Date().toISOString(), rimo: { progress: 100, status: 'COMPLETED' }, emails: {} };
   assert.equal(shouldConsiderCompletedNoPurchaseLead(completed), true);
   assert.equal(shouldConsiderCompletedNoPurchaseLead(buyer), false);
   assert.equal(shouldConsiderCheckoutLead(completed), false);
+});
+
+test('checkout bridge continues to saved Rimo step when leadKey is present', () => {
+  const continueUrl = buildCheckoutBridgeContinueUrl({
+    id: 'lead-123',
+    checkoutUrl: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?email=stale',
+    rimo: { leadKey: 'ldk_TEST', lastStep: 'medvaPatientNotes' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' }, 'complete_nopurchase_15m');
+
+  const parsed = new URL(continueUrl);
+  assert.equal(parsed.origin + parsed.pathname, 'https://try.tidemedix.com/intake/mv-xtyd5b/medva-patient-notes');
+  assert.equal(parsed.searchParams.get('email'), 'ldk_TEST');
+  assert.equal(parsed.searchParams.get('tm_target'), 'intake');
+  assert.equal(parsed.searchParams.get('rimo_step'), 'medva-patient-notes');
+  assert.equal(parsed.searchParams.get('utm_campaign'), 'tidemedix_complete_nopurchase_15m_bridge_continue');
+});
+
+test('checkout bridge falls back to checkout URL when Rimo leadKey is missing', () => {
+  const continueUrl = buildCheckoutBridgeContinueUrl({
+    id: 'lead-123',
+    checkoutUrl: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?session=abc',
+    rimo: { lastStep: 'checkout' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' }, 'complete_nopurchase_15m');
+
+  const parsed = new URL(continueUrl);
+  assert.equal(parsed.origin + parsed.pathname, 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout');
+  assert.equal(parsed.searchParams.get('session'), 'abc');
+  assert.equal(parsed.searchParams.get('tm_target'), 'checkout');
+  assert.equal(parsed.searchParams.get('rimo_step'), null);
+});
+
+test('checkout bridge normalizes stale generic Rimo intake slugs to current intake', () => {
+  const continueUrl = buildCheckoutBridgeContinueUrl({
+    id: 'lead-123',
+    checkoutUrl: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?session=abc',
+    rimo: { lastStep: 'checkout' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/wm-4ltue5' }, 'complete_nopurchase_15m');
+
+  const parsed = new URL(continueUrl);
+  assert.equal(parsed.origin + parsed.pathname, 'https://try.tidemedix.com/intake/wm-4ltue5/checkout');
+  assert.equal(parsed.searchParams.get('session'), 'abc');
+  assert.equal(parsed.searchParams.get('tm_target'), 'checkout');
+});
+
+test('Retatrutide checkout bridge ignores stale generic checkout URLs when leadKey is missing', () => {
+  const continueUrl = buildCheckoutBridgeContinueUrl({
+    id: 'lead-rt-no-key',
+    checkoutUrl: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?session=stale',
+    attribution: { tm_target: 'retatrutide_landing' },
+    rimo: { lastStep: 'checkout' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' }, 'complete_nopurchase_15m');
+
+  const parsed = new URL(continueUrl);
+  assert.equal(parsed.origin + parsed.pathname, 'https://try.tidemedix.com/intake/rt-qbe927/checkout');
+  assert.equal(parsed.searchParams.get('session'), null);
+  assert.equal(parsed.searchParams.get('tm_target'), 'intake');
+  assert.equal(parsed.searchParams.get('rimo_step'), 'checkout');
+});
+
+test('Retatrutide checkout bridge keeps the saved rt-qbe927 page when present', () => {
+  const continueUrl = buildCheckoutBridgeContinueUrl({
+    id: 'lead-rt-saved-page',
+    checkoutUrl: 'https://try.tidemedix.com/intake/rt-qbe927/gender?email=ldk_SAVED',
+    attribution: { tm_target: 'retatrutide_landing' },
+    rimo: { lastStep: 'checkout' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' }, 'complete_nopurchase_15m');
+
+  const parsed = new URL(continueUrl);
+  assert.equal(parsed.origin + parsed.pathname, 'https://try.tidemedix.com/intake/rt-qbe927/gender');
+  assert.equal(parsed.searchParams.get('email'), 'ldk_SAVED');
+  assert.equal(parsed.searchParams.get('tm_target'), 'intake');
 });
 
 test('lead dashboard classifies high-progress Rimo checkout leads as hot', () => {
@@ -300,6 +451,14 @@ test('SES delivery stats summarize per-step lifecycle status', () => {
   assert.equal(stats.recent[0].step, 'followup_2h');
 });
 
+test('Worker CAPI only sends Purchase events and does not server-send InitiateCheckout', () => {
+  const source = readFileSync(new URL('./src/index.js', import.meta.url), 'utf8');
+  assert.match(source, /event_name:\s*'Purchase'/);
+  assert.doesNotMatch(source, /event_name:\s*['"]InitiateCheckout['"]/);
+  assert.doesNotMatch(source, /eventName:\s*['"]InitiateCheckout['"]/);
+  assert.doesNotMatch(source, /sendMeta(?:[A-Za-z0-9_]*)InitiateCheckout/);
+});
+
 test('Meta Purchase CAPI payload hashes customer data and preserves value/currency', async () => {
   const request = new Request('https://links.tidemedix.com/api/purchase', {
     headers: {
@@ -330,6 +489,30 @@ test('Meta Purchase CAPI payload hashes customer data and preserves value/curren
   assert.equal(event.user_data.client_ip_address, '203.0.113.10');
   assert.equal(event.user_data.client_user_agent, 'node-test-agent');
   assert.match(event.user_data.fbc, /^fb\.1\.\d+\.FBCLID123$/);
+});
+
+test('Meta Purchase CAPI payload reads Rimo charge cents from data.object', async () => {
+  const payload = await buildMetaPurchaseEventPayload({
+    id: 'lead-rimo',
+    email: 'buyer@example.com',
+    purchase: { orderId: 'charge-123', currency: 'USD' },
+    checkoutUrl: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout'
+  }, null, {
+    type: 'charge.captured',
+    data: {
+      object: {
+        amount: 78500,
+        capturedAmount: 78500,
+        invoice: { total: 78500 },
+        customer: { email: 'buyer@example.com' }
+      }
+    }
+  });
+
+  const event = payload.data[0];
+  assert.equal(event.event_id, 'charge-123');
+  assert.equal(event.custom_data.currency, 'USD');
+  assert.equal(event.custom_data.value, 785);
 });
 
 test('SES SNS notification normalizer extracts tags, event type, and message id', () => {

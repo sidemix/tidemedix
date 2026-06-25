@@ -9,8 +9,11 @@ const CORS_ORIGINS = new Set([
 
 const PRODUCT_LINKS = {
   semaglutide: 'https://tidemedix.com/therapy/weight-loss-glp-1/?c3=transactionId&affId=AA0F177B',
-  tirzepatide: 'https://tidemedix.com/therapy/tirzepatide/?c3=transactionId&affId=AA0F177B'
+  tirzepatide: 'https://tidemedix.com/therapy/tirzepatide/?c3=transactionId&affId=AA0F177B',
+  retatrutide: 'https://try.tidemedix.com/intake/rt-qbe927'
 };
+
+const RETATRUTIDE_INTAKE_URL = 'https://try.tidemedix.com/intake/rt-qbe927';
 
 // Drip schedule for people who finish the quiz/contact step and begin checkout.
 // The "welcome" email at index 0 is sent inline from /api/lead, not by the cron.
@@ -46,10 +49,10 @@ export const BUYER_EMAIL_STEPS = [
 // Completed + no purchase path: the person made it through the intake/checkout
 // flow far enough to be actionable, but no paid order is recorded yet.
 export const COMPLETED_NO_PURCHASE_EMAIL_STEPS = [
-  { key: 'complete_nopurchase_15m', delayMs: 15 * 60 * 1000,          subject: () => 'Your TideMedix intake is saved', template: renderCompletedNoPurchaseFifteenMinuteEmail, ctaTarget: 'intake' },
-  { key: 'complete_nopurchase_24h', delayMs: 24 * 60 * 60 * 1000,     subject: () => 'A note about your TideMedix intake', template: renderCompletedNoPurchaseDayOneEmail,        ctaTarget: 'intake' },
-  { key: 'complete_nopurchase_3d',  delayMs: 3 * 24 * 60 * 60 * 1000, subject: () => 'Your TideMedix information is still saved',   template: renderCompletedNoPurchaseDayThreeEmail,      ctaTarget: 'intake' },
-  { key: 'complete_nopurchase_7d',  delayMs: 7 * 24 * 60 * 60 * 1000, subject: () => 'Final note from TideMedix',      template: renderCompletedNoPurchaseDaySevenEmail,      ctaTarget: 'intake' }
+  { key: 'complete_nopurchase_15m', delayMs: 15 * 60 * 1000,          subject: () => 'Your TideMedix intake is saved', template: renderCompletedNoPurchaseFifteenMinuteEmail, ctaTarget: 'bridge' },
+  { key: 'complete_nopurchase_24h', delayMs: 24 * 60 * 60 * 1000,     subject: () => 'A note about your TideMedix intake', template: renderCompletedNoPurchaseDayOneEmail,        ctaTarget: 'bridge' },
+  { key: 'complete_nopurchase_3d',  delayMs: 3 * 24 * 60 * 60 * 1000, subject: () => 'Your TideMedix information is still saved',   template: renderCompletedNoPurchaseDayThreeEmail,      ctaTarget: 'bridge' },
+  { key: 'complete_nopurchase_7d',  delayMs: 7 * 24 * 60 * 60 * 1000, subject: () => 'Final note from TideMedix',      template: renderCompletedNoPurchaseDaySevenEmail,      ctaTarget: 'bridge' }
 ];
 
 const ALL_EMAIL_STEPS = [
@@ -76,6 +79,8 @@ export default {
       if (url.pathname === '/api/purchase' && request.method === 'POST') return handlePurchase(request, env, ctx);
       if (url.pathname === '/api/purchased' && request.method === 'POST') return handlePurchase(request, env, ctx);
       if (url.pathname === '/api/rimo-webhook' && request.method === 'POST') return handleRimoWebhook(request, env, ctx);
+      if (url.pathname === '/checkout-bridge' && request.method === 'GET') return handleCheckoutBridge(request, env);
+      if (url.pathname === '/api/bridge-continue' && request.method === 'GET') return handleBridgeContinue(request, env);
       if (url.pathname === '/api/email-click' && request.method === 'GET') return handleEmailClick(request, env);
       if (url.pathname === '/api/ses-event' && request.method === 'POST') return handleSesEvent(request, env, ctx);
       if (url.pathname === '/api/unsubscribe' && request.method === 'GET') return handleUnsubscribe(request, env);
@@ -106,8 +111,10 @@ async function handleLeadDashboardApi(request, env) {
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 100), 1), 500);
   const leads = await listStoredLeads(env, 1000);
   const clicks = await listStoredEmailClicks(env, 500);
+  const leadEvents = await listStoredLeadEvents(env, 1000);
   const summary = buildLeadViews(leads);
   const emailClickStats = buildEmailClickStats(clicks);
+  const leadEventStats = buildLeadEventStats(leadEvents);
 
   if (view && view !== 'summary') {
     const rows = summary.views[view] || [];
@@ -119,6 +126,7 @@ async function handleLeadDashboardApi(request, env) {
     generatedAt: summary.generatedAt,
     totalLeads: summary.totalLeads,
     counts: summary.counts,
+    leadEventStats,
     emailClickStats,
     emailDeliveryStats: buildEmailDeliveryStats(leads),
     views: Object.fromEntries(Object.entries(summary.views).map(([key, rows]) => [key, rows.slice(0, limit)]))
@@ -263,6 +271,75 @@ function sortEmailClicks(clicks) {
   return clicks.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 }
 
+async function listStoredLeadEvents(env, max = 1000) {
+  const events = [];
+  let cursor;
+  do {
+    const page = await env.TIDEMEDIX_LEADS.list({ prefix: 'lead_event:', cursor, limit: 100 });
+    cursor = page.cursor;
+    for (const key of page.keys) {
+      const raw = await env.TIDEMEDIX_LEADS.get(key.name);
+      if (!raw) continue;
+      try {
+        events.push(sanitizeLeadEventForDashboard(JSON.parse(raw)));
+      } catch (_) {}
+      if (events.length >= max) return sortLeadEvents(events);
+    }
+  } while (cursor);
+  return sortLeadEvents(events);
+}
+
+function sanitizeLeadEventForDashboard(event = {}) {
+  return {
+    id: clean(event.id || ''),
+    leadId: clean(event.leadId || ''),
+    source: clean(event.source || 'unknown') || 'unknown',
+    leadType: clean(event.leadType || 'unknown') || 'unknown',
+    status: clean(event.status || 'unknown') || 'unknown',
+    eventName: clean(event.eventName || 'lead_submission') || 'lead_submission',
+    createdAt: clean(event.createdAt || event.timestamp || ''),
+    isNewLead: Boolean(event.isNewLead),
+    attributionSource: clean(event.attributionSource || 'unknown') || 'unknown',
+    utmCampaign: clean(event.utmCampaign || 'unknown') || 'unknown',
+    utmContent: clean(event.utmContent || 'unknown') || 'unknown'
+  };
+}
+
+function sortLeadEvents(events) {
+  return events.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+export function buildLeadEventStats(events = []) {
+  const bySource = {};
+  const byLeadType = {};
+  const byStatus = {};
+  const byDay = {};
+  let newUniqueLeads = 0;
+
+  for (const event of events) {
+    const source = clean(event.source || 'unknown') || 'unknown';
+    const leadType = clean(event.leadType || 'unknown') || 'unknown';
+    const status = clean(event.status || 'unknown') || 'unknown';
+    const day = clean(event.createdAt || '').slice(0, 10) || 'unknown';
+    bySource[source] = (bySource[source] || 0) + 1;
+    byLeadType[leadType] = (byLeadType[leadType] || 0) + 1;
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    byDay[day] = (byDay[day] || 0) + 1;
+    if (event.isNewLead) newUniqueLeads += 1;
+  }
+
+  return {
+    totalEvents: events.length,
+    newUniqueLeads,
+    repeatSubmissions: Math.max(0, events.length - newUniqueLeads),
+    bySource: sortCountMap(bySource),
+    byLeadType: sortCountMap(byLeadType),
+    byStatus: sortCountMap(byStatus),
+    byDay: sortCountMap(byDay),
+    recent: sortLeadEvents(events).slice(0, 25)
+  };
+}
+
 export function buildEmailClickStats(clicks = []) {
   const byStep = {};
   const byRimoStep = {};
@@ -299,13 +376,16 @@ export function buildRouteAuditRow(click = {}) {
   const expectedStep = ALL_EMAIL_STEPS.find(s => s.key === stepKey);
   const expectedTarget = clean(expectedStep?.ctaTarget || 'unknown') || 'unknown';
   const actualTarget = targetFromDestination(click.destination) || clean(click.target || '') || 'unknown';
-  const expectedRimoStep = expectedTarget === 'intake'
+  const routeTarget = expectedTarget === 'bridge' ? actualTarget : expectedTarget;
+  const expectedRimoStep = routeTarget === 'intake'
     ? (clean(click.rimoStep || '') || rimoStepParamFromDestination(click.destination) || rimoStepFromDestination(click.destination) || '')
     : '';
-  const actualRimoStep = expectedTarget === 'intake' ? (rimoStepFromDestination(click.destination) || '') : '';
-  const targetMatches = expectedTarget === actualTarget;
-  const rimoMatches = expectedTarget !== 'intake' || !expectedRimoStep || expectedRimoStep === actualRimoStep;
-  const missing = actualTarget === 'unknown' || (expectedTarget === 'intake' && !actualRimoStep);
+  const actualRimoStep = routeTarget === 'intake' ? (rimoStepFromDestination(click.destination) || '') : '';
+  const targetMatches = expectedTarget === 'bridge'
+    ? actualTarget !== 'unknown' && actualTarget !== 'bridge'
+    : expectedTarget === actualTarget;
+  const rimoMatches = routeTarget !== 'intake' || !expectedRimoStep || expectedRimoStep === actualRimoStep;
+  const missing = actualTarget === 'unknown' || (routeTarget === 'intake' && !actualRimoStep);
   const status = !targetMatches ? 'bad' : (rimoMatches ? 'ok' : (missing ? 'warn' : 'bad'));
 
   return {
@@ -605,7 +685,7 @@ function renderLeadDashboardPage() {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TideMedix Leads</title>
 <style>
 :root{color-scheme:dark;--bg:#061417;--panel:#0d252b;--line:#1f454c;--muted:#8bb5b8;--text:#eaf7f6;--accent:#43d3c4;--hot:#ffca66;--bad:#ff7b7b;--good:#61d394}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#061417,#10262a);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1280px;margin:0 auto;padding:28px}h1{margin:0 0 6px;font-size:28px}p{color:var(--muted)}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.grid{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin:22px 0}.card{background:rgba(13,37,43,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.18)}.metric{cursor:pointer}.metric.active{outline:2px solid var(--accent)}.metric b{display:block;font-size:30px}.metric span{color:var(--muted);font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}.tabs button{background:#0d252b;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:10px 14px;cursor:pointer}.tabs button.active{background:var(--accent);color:#041013;font-weight:800}.table{overflow:auto}.row,.head{display:grid;grid-template-columns:1.35fr .9fr .75fr .65fr .9fr .9fr .8fr;gap:10px;align-items:center;min-width:980px;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.07)}.head{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.name{font-weight:750}.sub{color:var(--muted);font-size:12px;margin-top:2px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:12px;color:var(--muted)}.hot{color:var(--hot)}.good{color:var(--good)}.bad{color:var(--bad)}a{color:var(--accent)}.bar{height:8px;background:#16373d;border-radius:999px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}.small{font-size:12px;color:var(--muted)}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.top{display:block}}
-</style></head><body><main><div class="top"><div><h1>TideMedix Lead Cockpit</h1><p>Rimo funnel events, buyers, abandoners, and follow-up priority from the TideMedix Worker.</p></div><div class="small" id="stamp">Loading…</div></div><section class="grid" id="metrics"></section><section class="card" id="clickStats"></section><section class="card"><div class="tabs" id="tabs"></div><div class="table"><div class="head"><div>Lead</div><div>Stage</div><div>Progress</div><div>Value</div><div>Last Step</div><div>Updated</div><div>Actions</div></div><div id="rows"></div></div></section></main>
+</style></head><body><main><div class="top"><div><h1>TideMedix Lead Cockpit</h1><p>Rimo funnel events, buyers, abandoners, and follow-up priority from the TideMedix Worker.</p></div><div class="small" id="stamp">Loading…</div></div><section class="grid" id="metrics"></section><section class="card" id="leadEventStats"></section><section class="card" id="clickStats"></section><section class="card"><div class="tabs" id="tabs"></div><div class="table"><div class="head"><div>Lead</div><div>Stage</div><div>Progress</div><div>Value</div><div>Last Step</div><div>Updated</div><div>Actions</div></div><div id="rows"></div></div></section></main>
 <script>
 const token=new URL(location.href).searchParams.get('token')||localStorage.tidemedixLeadToken||''; if(token) localStorage.tidemedixLeadToken=token;
 const labels={hot_leads:'Hot Leads',completed_no_purchase:'Completed No Purchase',checkout_abandoners:'Checkout Abandoners',new_leads_today:'New Today',buyers:'Buyers',needs_follow_up:'Needs Follow-up',disqualified:'Disqualified',all:'All Leads'};
@@ -617,10 +697,12 @@ function routeStatusPills(m){const ok=Number(m&&m.ok||0), warn=Number(m&&m.warn|
 function auditStatusClass(s){return s==='ok'?'good':(s==='bad'?'bad':'hot')}
 function stepLabel(c){return c.label||c.step||'unknown'}
 function routeAuditRows(rows){return (rows||[]).slice(0,10).map(c=>'<div class="row" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div><div class="name">'+esc(stepLabel(c))+'</div><div class="sub">'+esc(c.step)+'</div></div><div>'+esc(c.expectedTarget||'—')+'</div><div>'+esc(c.actualTarget||'—')+'</div><div>'+esc(c.expectedRimoStepLabel||c.expectedRimoStep||'—')+'</div><div>'+esc(c.actualRimoStepLabel||c.actualRimoStep||'—')+'</div><div><span class="pill '+auditStatusClass(c.status)+'">'+esc(c.statusLabel||c.status)+'</span></div><div>'+ago(c.timestamp)+'</div></div>').join('')}
+function renderLeadEventStats(){const s=data.leadEventStats||{totalEvents:0,newUniqueLeads:0,repeatSubmissions:0,bySource:{},byLeadType:{},byDay:{}}; document.getElementById('leadEventStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Lead Event Ledger</h2><p style="margin-top:0">Backend raw lead submissions are now separate from unique saved leads. Use this to reconcile Meta Lead events vs backend lead events vs unique backend leads.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Backend lead events</div><b>'+Number(s.totalEvents||0)+'</b></div><div><div class="small">New unique leads</div><b>'+Number(s.newUniqueLeads||0)+'</b></div><div><div class="small">Repeat submissions</div><b>'+Number(s.repeatSubmissions||0)+'</b></div><div><div class="small">By source</div>'+mapRows(s.bySource)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">By lead type</div>'+mapRows(s.byLeadType)+'</div><div><div class="small">By day</div>'+mapRows(s.byDay)+'</div></div>'}
 function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},routeStatus:{},routeAudit:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Route Audit</h2><p style="margin-top:0">SES confirms provider delivery. Route audit surfaces Needs Review first, then Checks, then OK routes. Needs Review means the email expected one destination but the clicked link tracked a different target.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Route audit</div>'+routeStatusPills(s.routeStatus)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div>Email Step</div><div>Expected Target</div><div>Actual Target</div><div>Expected Rimo Step</div><div>Actual Rimo Step</div><div>Status</div><div>Clicked</div></div>'+routeAuditRows(s.routeAudit)+'</div>'}
 function render(){document.getElementById('stamp').textContent='Updated '+new Date(data.generatedAt).toLocaleString()+' · '+data.totalLeads+' total';
  const metricKeys=['hot_leads','completed_no_purchase','checkout_abandoners','buyers','needs_follow_up'];
  document.getElementById('metrics').innerHTML=metricKeys.map(k=>\`<div class="card metric \${current===k?'active':''}" onclick="show('\${k}')"><b>\${data.counts[k]||0}</b><span>\${labels[k]}</span></div>\`).join('');
+ renderLeadEventStats();
  renderClickStats();
  const tabs=['hot_leads','completed_no_purchase','checkout_abandoners','needs_follow_up','buyers','new_leads_today','disqualified','all'];
  document.getElementById('tabs').innerHTML=tabs.map(k=>\`<button class="\${current===k?'active':''}" onclick="show('\${k}')">\${labels[k]} (\${data.counts[k]||0})</button>\`).join('');
@@ -723,6 +805,7 @@ async function saveLeadFromBody(request, env, ctx, body) {
 
   await env.TIDEMEDIX_LEADS.put(`lead:${id}`, JSON.stringify(lead));
   await env.TIDEMEDIX_LEADS.put(`email:${email}`, id);
+  await recordLeadSubmissionEvent(env, lead, body, now, { isNewLead: !existingId });
 
   // Send immediate checkout-started welcome email (don't block response). Skip
   // quiz abandoners; they get the separate recovery sequence from cron.
@@ -748,11 +831,40 @@ async function handleResume(request, env) {
   });
 }
 
+async function recordLeadSubmissionEvent(env, lead, body = {}, now = new Date().toISOString(), opts = {}) {
+  const id = crypto.randomUUID();
+  const source = clean(body.leadSource || body.source || body.attribution?.source || lead?.attribution?.source || body.leadType || 'unknown') || 'unknown';
+  const attribution = lead?.attribution || {};
+  const event = {
+    id,
+    eventName: 'lead_submission',
+    leadId: clean(lead?.id || ''),
+    emailHash: await sha256Hex(normalizeEmail(lead?.email || body.email || '')),
+    source,
+    leadType: clean(body.leadType || 'unknown') || 'unknown',
+    status: clean(lead?.status || 'unknown') || 'unknown',
+    isNewLead: Boolean(opts.isNewLead),
+    createdAt: now,
+    attributionSource: clean(attribution.source || 'unknown') || 'unknown',
+    utmSource: clean(attribution.utm_source || ''),
+    utmCampaign: clean(attribution.utm_campaign || ''),
+    utmContent: clean(attribution.utm_content || ''),
+    utmTerm: clean(attribution.utm_term || ''),
+    fbclid: clean(attribution.fbclid || ''),
+    fbp: clean(body.fbp || body._fbp || attribution.fbp || ''),
+    fbc: clean(body.fbc || body._fbc || attribution.fbc || ''),
+    page: cleanUrl(body.page || body.landingUrl || attribution.page || attribution.landingUrl || ''),
+    userAgent: clean(body.userAgent || '')
+  };
+  await env.TIDEMEDIX_LEADS.put(`lead_event:${now}:${id}`, JSON.stringify(event));
+  return event;
+}
+
 async function handlePurchase(request, env, ctx) {
-  if (env.PURCHASE_WEBHOOK_SECRET) {
-    const supplied = request.headers.get('x-webhook-secret') || '';
-    if (supplied !== env.PURCHASE_WEBHOOK_SECRET) return json(request, { ok: false, error: 'unauthorized' }, 401);
-  }
+  const purchaseSecret = env.PURCHASE_WEBHOOK_SECRET || env.RIMO_WEBHOOK_SECRET || '';
+  if (!purchaseSecret) return json(request, { ok: false, error: 'purchase_webhook_secret_not_configured' }, 503);
+  const supplied = request.headers.get('x-webhook-secret') || request.headers.get('x-rimo-secret') || '';
+  if (supplied !== purchaseSecret) return json(request, { ok: false, error: 'unauthorized' }, 401);
 
   const body = await request.json();
   const result = await markPurchaseFromPayload(env, body, new Date().toISOString());
@@ -813,6 +925,51 @@ async function handleRimoWebhook(request, env, ctx) {
   });
 }
 
+async function handleCheckoutBridge(request, env) {
+  const url = new URL(request.url);
+  const id = clean(url.searchParams.get('id') || '');
+  const stepKey = clean(url.searchParams.get('step') || 'checkout_bridge');
+  const lead = id ? await getLead(env, id) : null;
+  const continueUrl = buildCheckoutBridgeContinueUrl(lead, env, stepKey);
+  const continueClickUrl = buildBridgeContinueClickUrl(lead, env, stepKey);
+  return corsResponse(request, renderCheckoutBridgePage(lead, continueClickUrl || continueUrl), 200, { 'content-type': 'text/html; charset=utf-8' });
+}
+
+async function handleBridgeContinue(request, env) {
+  const url = new URL(request.url);
+  const id = clean(url.searchParams.get('id') || '');
+  const stepKey = clean(url.searchParams.get('step') || 'checkout_bridge');
+  const fallbackUrl = buildCheckoutBridgeContinueUrl(null, env, stepKey);
+  if (!id) return redirect(fallbackUrl);
+
+  const lead = await getLead(env, id);
+  const destination = buildCheckoutBridgeContinueUrl(lead, env, stepKey);
+  if (!lead || !lead.email) return redirect(destination || fallbackUrl);
+
+  const now = new Date().toISOString();
+  const eventId = crypto.randomUUID();
+  const clickEvent = {
+    id: eventId,
+    leadId: lead.id,
+    step: `${stepKey}_bridge_continue`,
+    parentStep: stepKey,
+    target: targetFromDestination(destination) || 'intake',
+    rimoStep: rimoStepFromDestination(destination) || '',
+    destination,
+    timestamp: now,
+    userAgent: clean(request.headers.get('user-agent')),
+    ipHash: await sha256Hex(request.headers.get('cf-connecting-ip') || '')
+  };
+
+  await env.TIDEMEDIX_LEADS.put(`click:${lead.id}:${Date.now()}:${eventId}`, JSON.stringify(clickEvent));
+  lead.clicks = lead.clicks || {};
+  lead.clicks[`${stepKey}_bridge_continue`] = now;
+  lead.updatedAt = now;
+  await env.TIDEMEDIX_LEADS.put(`lead:${lead.id}`, JSON.stringify(lead));
+
+  return redirect(destination);
+}
+
 async function handleEmailClick(request, env) {
   const url = new URL(request.url);
   const id = url.searchParams.get('id') || '';
@@ -825,16 +982,21 @@ async function handleEmailClick(request, env) {
 
   const step = ALL_EMAIL_STEPS.find(s => s.key === stepKey);
   const destination = trackedDestinationForStep(lead, step, env, stepKey);
+  const bridgeDestination = step?.ctaTarget === 'bridge' ? destination : '';
+  const auditedDestination = step?.ctaTarget === 'bridge'
+    ? buildCheckoutBridgeContinueUrl(lead, env, stepKey)
+    : destination;
   const now = new Date().toISOString();
   const eventId = crypto.randomUUID();
-  const rimoStep = step?.ctaTarget === 'intake' ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
+  const rimoStep = rimoStepFromDestination(auditedDestination) || (step?.ctaTarget === 'intake' ? rimoStepSlug(lead?.rimo?.lastStep || '') : '');
   const clickEvent = {
     id: eventId,
     leadId: lead.id,
     step: stepKey,
-    target: step?.ctaTarget || 'fallback',
+    target: targetFromDestination(auditedDestination) || step?.ctaTarget || 'fallback',
     rimoStep,
-    destination,
+    destination: auditedDestination,
+    ...(bridgeDestination ? { bridgeDestination } : {}),
     timestamp: now,
     userAgent: clean(request.headers.get('user-agent')),
     ipHash: await sha256Hex(request.headers.get('cf-connecting-ip') || '')
@@ -1144,6 +1306,7 @@ function bytesToHex(bytes) {
 }
 
 function productLinkFor(lead) {
+  if (isRetatrutideLead(lead)) return PRODUCT_LINKS.retatrutide;
   const plan = normalizePlan(lead?.plan);
   return PRODUCT_LINKS[plan] || PRODUCT_LINKS.semaglutide;
 }
@@ -1157,11 +1320,75 @@ function funnelLinkFor(env = {}) {
 }
 
 function intakeLinkFor(env = {}) {
-  return env.RIMO_INTAKE_URL || env.INTAKE_URL || 'https://try.tidemedix.com/intake/mv-xtyd5b';
+  return env.RIMO_INTAKE_URL || env.INTAKE_URL || 'https://try.tidemedix.com/intake/wm-4ltue5';
+}
+
+function retatrutideIntakeLinkFor(env = {}) {
+  return env.RETATRUTIDE_INTAKE_URL || RETATRUTIDE_INTAKE_URL;
+}
+
+export function isRetatrutideLead(lead = {}) {
+  const attribution = lead?.attribution || {};
+  const rimo = lead?.rimo || {};
+  const haystack = [
+    lead?.plan,
+    lead?.product,
+    lead?.tm_product,
+    attribution.tm_product,
+    attribution.tm_target,
+    attribution.utm_campaign,
+    attribution.utm_content,
+    attribution.utm_term,
+    attribution.page,
+    attribution.landingUrl,
+    attribution.sourceUrl,
+    lead?.page,
+    lead?.landingUrl,
+    lead?.checkoutUrl,
+    rimo.tm_product,
+    rimo.tm_target,
+    rimo.utm_campaign,
+    rimo.utm_content,
+    rimo.page,
+    rimo.landingUrl
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return /retatrutide|ratatrutide|rt-qbe927|retatrutide_landing|retatrutide_intake|rt\.tidemedix\.com/.test(haystack);
+}
+
+function intakeLinkForLead(lead, env = {}) {
+  return isRetatrutideLead(lead) ? retatrutideIntakeLinkFor(env) : intakeLinkFor(env);
+}
+
+function normalizeLegacyGenericIntakeUrl(rawUrl, env = {}) {
+  const value = cleanUrl(rawUrl || '');
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    if (url.hostname !== 'try.tidemedix.com') return value;
+    const canonical = new URL(intakeLinkFor(env));
+    const legacyMatch = url.pathname.match(/^\/intake\/mv-xtyd5b(\/.*)?$/);
+    if (!legacyMatch) return value;
+    url.pathname = `${canonical.pathname.replace(/\/$/, '')}${legacyMatch[1] || ''}`;
+    return url.toString();
+  } catch (_) {
+    return value;
+  }
+}
+
+function savedRetatrutideUrlForLead(lead, env = {}) {
+  const checkoutUrl = cleanUrl(lead?.checkoutUrl || '');
+  if (checkoutUrl) {
+    try {
+      const parsed = new URL(checkoutUrl);
+      if (parsed.hostname === 'try.tidemedix.com' && parsed.pathname.includes('/intake/rt-qbe927')) return checkoutUrl;
+    } catch (_) {}
+  }
+  return buildRimoResumeUrl(lead, env);
 }
 
 export function buildRimoResumeUrl(lead, env = {}) {
-  const base = intakeLinkFor(env).replace(/\/$/, '');
+  const base = intakeLinkForLead(lead, env).replace(/\/$/, '');
   const rimo = lead?.rimo || {};
   const leadKey = clean(rimo.leadKey || lead?.leadKey || '');
   const stepSlug = rimoStepSlug(rimo.lastStep || '');
@@ -1200,16 +1427,46 @@ export function buildEmailClickUrl(lead, step, env = {}) {
   return `${baseUrl}/api/email-click?id=${id}&step=${stepKey}`;
 }
 
+export function buildCheckoutBridgeUrl(lead, env = {}, stepKey = 'checkout_bridge') {
+  const baseUrl = String(env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev').replace(/\/$/, '');
+  const url = new URL(`${baseUrl}/checkout-bridge`);
+  if (lead?.id) url.searchParams.set('id', lead.id);
+  if (stepKey) url.searchParams.set('step', stepKey);
+  return appendEmailAttribution(url.toString(), stepKey, { target: 'bridge' });
+}
+
+export function buildBridgeContinueClickUrl(lead, env = {}, stepKey = 'checkout_bridge') {
+  if (!lead?.id) return '';
+  const baseUrl = String(env.PUBLIC_BASE_URL || 'https://tidemedix-leads.tylerdefi.workers.dev').replace(/\/$/, '');
+  const url = new URL(`${baseUrl}/api/bridge-continue`);
+  url.searchParams.set('id', lead.id);
+  url.searchParams.set('step', stepKey || 'checkout_bridge');
+  return url.toString();
+}
+
 function trackedDestinationForStep(lead, step, env, stepKey) {
   const productUrl = productLinkFor(lead);
-  const checkoutUrl = lead.checkoutUrl || productUrl;
+  const retatrutideLead = isRetatrutideLead(lead);
+  const checkoutUrl = retatrutideLead ? savedRetatrutideUrlForLead(lead, env) : (lead.checkoutUrl || productUrl);
   const resumeUrl = buildResumeUrl(lead, env);
   const funnelUrl = funnelLinkFor(env);
   const intakeUrl = buildRimoResumeUrl(lead, env);
   const target = step?.ctaTarget || 'product';
+  if (target === 'bridge') return buildCheckoutBridgeUrl(lead, env, stepKey);
   const raw = target === 'checkout' ? checkoutUrl : (target === 'resume' ? resumeUrl : (target === 'portal' ? portalLinkFor(env) : (target === 'funnel' ? funnelUrl : (target === 'intake' ? intakeUrl : productUrl))));
   const rimoStep = target === 'intake' ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
   return appendEmailAttribution(raw, stepKey, { target, rimoStep });
+}
+
+export function buildCheckoutBridgeContinueUrl(lead, env = {}, stepKey = 'checkout_bridge') {
+  const canResumeRimo = Boolean(clean(lead?.rimo?.leadKey || ''));
+  const retatrutideLead = isRetatrutideLead(lead);
+  const continueTarget = canResumeRimo || retatrutideLead ? 'intake' : (lead?.checkoutUrl ? 'checkout' : 'intake');
+  const continueRaw = lead
+    ? (retatrutideLead ? savedRetatrutideUrlForLead(lead, env) : (canResumeRimo ? buildRimoResumeUrl(lead, env) : (normalizeLegacyGenericIntakeUrl(lead.checkoutUrl, env) || buildRimoResumeUrl(lead, env))))
+    : intakeLinkFor(env);
+  const rimoStep = canResumeRimo || retatrutideLead ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
+  return appendEmailAttribution(continueRaw, `${stepKey}_bridge_continue`, { target: continueTarget, rimoStep });
 }
 
 export function appendEmailAttribution(rawUrl, stepKey, meta = {}) {
@@ -1241,7 +1498,47 @@ export function buildResumeUrl(lead, env = {}) {
 function normalizePlan(value) {
   const s = String(value || '').toLowerCase().trim();
   if (s === 'tirzepatide') return 'tirzepatide';
+  if (/retatrutide|ratatrutide/.test(s)) return 'retatrutide';
   return 'semaglutide';
+}
+
+function renderCheckoutBridgePage(lead, continueUrl) {
+  const name = lead?.firstName ? `, ${escapeHtml(lead.firstName)}` : '';
+  const plan = normalizePlan(lead?.plan);
+  const planLabel = plan === 'tirzepatide' ? 'Tirzepatide' : 'GLP-1 weight management';
+  const safeContinue = escapeHtml(continueUrl);
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your TideMedix intake is saved</title>
+  <style>
+    :root{--ink:#171b2a;--muted:#5b6776;--line:#dde5e2;--teal:#2d7d6e;--soft:#eef7f4;--bg:#fbfcfb}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:920px;margin:0 auto;padding:28px 20px 56px}.top{display:flex;align-items:center;gap:12px;margin-bottom:44px}.mark{width:34px;height:34px;border:2px solid var(--teal);border-radius:10px;color:var(--teal);display:grid;place-items:center;font-weight:900}.brand{letter-spacing:.08em;font-weight:850}.card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:34px;box-shadow:0 22px 70px rgba(23,27,42,.08)}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--soft);color:#176255;border-radius:999px;padding:9px 14px;font-weight:800;font-size:13px}.eyebrow:before{content:"";width:7px;height:7px;background:var(--teal);border-radius:50%}h1{font-size:clamp(34px,6vw,62px);line-height:.98;margin:22px 0 16px;letter-spacing:-.06em}.lede{font-size:19px;line-height:1.55;color:var(--muted);max-width:680px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:30px 0}.step{border:1px solid var(--line);border-radius:20px;padding:20px;background:#fbfdfc}.num{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--soft);color:#176255;font-weight:900;margin-bottom:14px}.step h2{font-size:18px;margin:0 0 8px}.step p{margin:0;color:var(--muted);line-height:1.45}.cta{display:inline-block;background:#171b2a;color:white;text-decoration:none;border-radius:999px;padding:17px 26px;font-weight:850;box-shadow:0 14px 30px rgba(23,27,42,.18)}.sub{margin-top:14px;color:var(--muted);font-size:14px;line-height:1.45}.notice{margin-top:22px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:13px;line-height:1.5}@media(max-width:760px){.card{padding:24px}.steps{grid-template-columns:1fr}h1{font-size:38px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top"><div class="mark">+</div><div class="brand"><strong>TIDE</strong><span style="font-weight:500">MEDIX</span></div></div>
+    <section class="card">
+      <div class="eyebrow">Your intake is saved</div>
+      <h1>One final step before provider review${name}.</h1>
+      <p class="lede">You are continuing the ${escapeHtml(planLabel)} path. Before you return to the secure checkout, here is exactly what happens after you complete the order.</p>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><h2>Provider review first</h2><p>A US-licensed provider reviews your health information before any prescription decision is made.</p></div>
+        <div class="step"><div class="num">2</div><h2>If clinically appropriate</h2><p>Treatment is only prescribed if the provider determines it is appropriate for your history.</p></div>
+        <div class="step"><div class="num">3</div><h2>Discreet next steps</h2><p>If prescribed, treatment ships discreetly and you receive clear care instructions.</p></div>
+      </div>
+      <a class="cta" href="${safeContinue}">Continue to secure checkout →</a>
+      <p class="sub">No clinic waiting room. No pressure to start over. Your saved intake reopens where you left off.</p>
+      <p class="notice">TideMedix does not guarantee treatment approval or outcomes. Final eligibility is determined by a US-licensed physician after reviewing your completed medical assessment.</p>
+    </section>
+  </main>
+</body>
+</html>`;
 }
 
 // ---------- Email templates ----------
@@ -1529,7 +1826,7 @@ export async function buildMetaPurchaseEventPayload(lead, request = null, payloa
       event_time: eventTime,
       event_id: eventId,
       action_source: 'website',
-      event_source_url: cleanUrl(firstTruthy(lead?.checkoutUrl, attribution.page, attribution.url, payload.checkoutUrl, payload.page, 'https://try.tidemedix.com/intake/mv-xtyd5b')),
+      event_source_url: cleanUrl(firstTruthy(lead?.checkoutUrl, attribution.page, attribution.url, payload.checkoutUrl, payload.page, 'https://try.tidemedix.com/intake/wm-4ltue5')),
       user_data: userData,
       custom_data: {
         currency: clean(firstTruthy(purchase.currency, payload.currency, order?.currency, 'USD')) || 'USD',
@@ -1693,10 +1990,41 @@ function emailFromPayload(payload) {
 }
 
 function amountFromPayload(payload) {
-  const order = payload.order || payload.data?.order || payload.checkout || payload.data?.checkout || payload;
-  const value = firstTruthy(payload.amount, payload.total, payload.total_amount, payload.order_amount, order?.amount, order?.total, order?.total_amount, order?.subtotal, order?.value);
+  const object = payload.data?.object || {};
+  const invoice = object.invoice || payload.invoice || payload.data?.invoice || {};
+  const order = payload.order || payload.data?.order || payload.checkout || payload.data?.checkout || object.order || object.checkout || object;
+  const value = firstTruthy(
+    payload.amount,
+    payload.capturedAmount,
+    payload.authorizedAmount,
+    payload.total,
+    payload.total_amount,
+    payload.order_amount,
+    payload.value,
+    payload.data?.amount,
+    payload.data?.capturedAmount,
+    payload.data?.authorizedAmount,
+    object.amount,
+    object.capturedAmount,
+    object.authorizedAmount,
+    object.total,
+    object.total_amount,
+    object.value,
+    invoice.total,
+    invoice.amount,
+    order?.amount,
+    order?.capturedAmount,
+    order?.authorizedAmount,
+    order?.total,
+    order?.total_amount,
+    order?.subtotal,
+    order?.value
+  );
   const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
+  if (!Number.isFinite(number)) return 0;
+  // Rimo charge webhooks send Stripe-style minor units (78500 = $785.00, 100 = $1.00).
+  // Browser/test purchase payloads may already be dollar units, so only convert obvious cents.
+  return number >= 100 ? number / 100 : number;
 }
 
 function progressFromRimo(rawProgress, step, status) {
