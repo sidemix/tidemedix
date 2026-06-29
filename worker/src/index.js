@@ -1320,7 +1320,7 @@ function funnelLinkFor(env = {}) {
 }
 
 function intakeLinkFor(env = {}) {
-  return env.RIMO_INTAKE_URL || env.INTAKE_URL || 'https://try.tidemedix.com/intake/wm-4ltue5';
+  return env.RIMO_INTAKE_URL || env.INTAKE_URL || 'https://try.tidemedix.com/intake/mv-xtyd5b';
 }
 
 function retatrutideIntakeLinkFor(env = {}) {
@@ -1826,7 +1826,7 @@ export async function buildMetaPurchaseEventPayload(lead, request = null, payloa
       event_time: eventTime,
       event_id: eventId,
       action_source: 'website',
-      event_source_url: cleanUrl(firstTruthy(lead?.checkoutUrl, attribution.page, attribution.url, payload.checkoutUrl, payload.page, 'https://try.tidemedix.com/intake/wm-4ltue5')),
+      event_source_url: cleanUrl(firstTruthy(lead?.checkoutUrl, attribution.page, attribution.url, payload.checkoutUrl, payload.page, 'https://try.tidemedix.com/intake/mv-xtyd5b')),
       user_data: userData,
       custom_data: {
         currency: clean(firstTruthy(purchase.currency, payload.currency, order?.currency, 'USD')) || 'USD',
