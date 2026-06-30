@@ -515,6 +515,20 @@ test('Meta Purchase CAPI payload reads Rimo charge cents from data.object', asyn
   assert.equal(event.custom_data.value, 785);
 });
 
+test('purchase webhooks only enqueue buyer email and Meta CAPI when the purchase is newly marked', () => {
+  const source = readFileSync(new URL('./src/index.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(result\.marked\) \{\s*enqueueBuyerDayZero\(env, result\.lead, ctx\);\s*enqueueMetaPurchaseEvent\(env, result\.lead, request, body, ctx\);\s*\}/s);
+  assert.match(source, /if \(purchaseResult\?\.marked\) \{\s*enqueueBuyerDayZero\(env, purchaseResult\?\.lead, ctx\);\s*enqueueMetaPurchaseEvent\(env, purchaseResult\?\.lead, request, payload, ctx\);\s*\}/s);
+  assert.match(source, /duplicate: Boolean\(result\.duplicate\)/);
+});
+
+test('repeat purchase webhooks are detected after Meta has already accepted the buyer event', () => {
+  const source = readFileSync(new URL('./src/index.js', import.meta.url), 'utf8');
+  assert.match(source, /const alreadyPurchased = Boolean\(lead\.purchasedAt \|\| lead\.status === 'purchased'\);/);
+  assert.match(source, /const alreadySentToMeta = Boolean\(lead\.meta\?\.purchase\?\.ok\);/);
+  assert.match(source, /return \{ email, leadId: id, marked: false, duplicate: true, lead \};/);
+});
+
 test('SES SNS notification normalizer extracts tags, event type, and message id', () => {
   const normalized = normalizeSesEvent({
     eventType: 'Delivery',

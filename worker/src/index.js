@@ -870,9 +870,11 @@ async function handlePurchase(request, env, ctx) {
   const result = await markPurchaseFromPayload(env, body, new Date().toISOString());
   if (!result.email) return json(request, { ok: false, error: 'email_required' }, 400);
   if (!result.leadId) return json(request, { ok: false, error: 'lead_not_found' }, 404);
-  enqueueBuyerDayZero(env, result.lead, ctx);
-  enqueueMetaPurchaseEvent(env, result.lead, request, body, ctx);
-  return json(request, { ok: true });
+  if (result.marked) {
+    enqueueBuyerDayZero(env, result.lead, ctx);
+    enqueueMetaPurchaseEvent(env, result.lead, request, body, ctx);
+  }
+  return json(request, { ok: true, duplicate: Boolean(result.duplicate) });
 }
 
 async function handleRimoWebhook(request, env, ctx) {
@@ -903,15 +905,18 @@ async function handleRimoWebhook(request, env, ctx) {
 
   let leadResult = null;
   const email = emailFromPayload(payload);
-  if (email) {
+  const purchaseEvent = isPurchaseEvent(eventType, payload);
+  if (email && !purchaseEvent) {
     leadResult = await upsertLeadFromRimoPayload(env, payload, eventType, now);
   }
 
   let purchaseResult = null;
-  if (isPurchaseEvent(eventType, payload)) {
+  if (purchaseEvent) {
     purchaseResult = await markPurchaseFromPayload(env, payload, now);
-    enqueueBuyerDayZero(env, purchaseResult?.lead, ctx);
-    enqueueMetaPurchaseEvent(env, purchaseResult?.lead, request, payload, ctx);
+    if (purchaseResult?.marked) {
+      enqueueBuyerDayZero(env, purchaseResult?.lead, ctx);
+      enqueueMetaPurchaseEvent(env, purchaseResult?.lead, request, payload, ctx);
+    }
   }
 
   return json(request, {
@@ -1929,11 +1934,19 @@ async function markPurchaseFromPayload(env, payload, now) {
   const lead = await getLead(env, id);
   if (!lead) return { email, leadId: null, marked: false };
   const order = payload.order || payload.data?.order || payload.checkout || payload.data?.checkout || payload;
+  const incomingOrderId = clean(firstTruthy(payload.orderId, payload.order_id, order?.id, order?.order_id, order?.orderId));
+  const existingOrderId = clean(lead.purchase?.orderId || lead.rimo?.orderId || '');
+  const alreadyPurchased = Boolean(lead.purchasedAt || lead.status === 'purchased');
+  const alreadySentToMeta = Boolean(lead.meta?.purchase?.ok);
+  if (alreadyPurchased && alreadySentToMeta && (!incomingOrderId || !existingOrderId || incomingOrderId === existingOrderId)) {
+    return { email, leadId: id, marked: false, duplicate: true, lead };
+  }
+
   lead.status = 'purchased';
   lead.purchasedAt = lead.purchasedAt || now;
   lead.purchase = {
     ...(lead.purchase || {}),
-    orderId: clean(firstTruthy(payload.orderId, payload.order_id, order?.id, order?.order_id, order?.orderId, lead.purchase?.orderId)),
+    orderId: clean(firstTruthy(incomingOrderId, lead.purchase?.orderId)),
     amount: Number(amountFromPayload(payload) || lead.value || lead.purchase?.amount || 0),
     currency: clean(firstTruthy(payload.currency, order?.currency, lead.purchase?.currency, 'USD'))
   };
