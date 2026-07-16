@@ -587,7 +587,7 @@ function sanitizeLeadForDashboard(lead) {
   };
 }
 
-const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'clickid', 'affId'];
+const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'clickid', 'affId', 'c1', 'c2', 'c3'];
 
 export function extractAttributionFromLeadBody(body = {}) {
   const nested = (body.attribution && typeof body.attribution === 'object') ? body.attribution : {};
@@ -872,7 +872,7 @@ async function handlePurchase(request, env, ctx) {
   if (!result.leadId) return json(request, { ok: false, error: 'lead_not_found' }, 404);
   if (result.marked) {
     enqueueBuyerDayZero(env, result.lead, ctx);
-    enqueueMetaPurchaseEvent(env, result.lead, request, body, ctx);
+    enqueuePurchaseAttributionEvents(env, result.lead, request, body, ctx);
   }
   return json(request, { ok: true, duplicate: Boolean(result.duplicate) });
 }
@@ -915,7 +915,7 @@ async function handleRimoWebhook(request, env, ctx) {
     purchaseResult = await markPurchaseFromPayload(env, payload, now);
     if (purchaseResult?.marked) {
       enqueueBuyerDayZero(env, purchaseResult?.lead, ctx);
-      enqueueMetaPurchaseEvent(env, purchaseResult?.lead, request, payload, ctx);
+      enqueuePurchaseAttributionEvents(env, purchaseResult?.lead, request, payload, ctx);
     }
   }
 
@@ -1105,9 +1105,20 @@ function enqueueBuyerDayZero(env, lead, ctx) {
   ctx.waitUntil(sendStepAndRecord(env, lead, BUYER_EMAIL_STEPS[0]).catch(err => console.error('buyer_day0_send_failed', err)));
 }
 
-function enqueueMetaPurchaseEvent(env, lead, request, payload, ctx) {
+function enqueuePurchaseAttributionEvents(env, lead, request, payload, ctx) {
   if (!lead || !shouldConsiderBuyerLead(lead) || !ctx?.waitUntil) return;
-  ctx.waitUntil(sendMetaPurchaseEvent(env, lead, request, payload).catch(err => console.error('meta_purchase_send_failed', err)));
+  ctx.waitUntil((async () => {
+    try {
+      await sendMetaPurchaseEvent(env, lead, request, payload);
+    } catch (err) {
+      console.error('meta_purchase_send_failed', err);
+    }
+    try {
+      await sendOasisPurchasePostback(env, lead, payload);
+    } catch (err) {
+      console.error('oasis_purchase_postback_failed', err);
+    }
+  })());
 }
 
 export function normalizeSesEvent(message = {}, envelope = {}) {
@@ -1757,6 +1768,145 @@ function emailHtmlToText(html) {
     .trim();
 }
 
+// ---------- Oasis CPA postback ----------
+
+function safeOasisIdentifier(value) {
+  const identifier = clean(value);
+  return /^[A-Za-z0-9._~-]{1,200}$/.test(identifier) ? identifier : '';
+}
+
+export function oasisSessionIdFromLead(lead = {}) {
+  const attribution = lead.attribution || {};
+  const direct = safeOasisIdentifier(firstTruthy(
+    attribution.c3,
+    attribution.session_id,
+    attribution.sessionId,
+    lead.oasis?.sessionId
+  ));
+  if (direct) return direct;
+
+  const candidates = [
+    attribution.page,
+    attribution.url,
+    attribution.landingUrl,
+    attribution.landing_url,
+    lead.checkoutUrl
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const sessionId = safeOasisIdentifier(new URL(String(candidate)).searchParams.get('c3'));
+      if (sessionId) return sessionId;
+    } catch (_) {
+      // Ignore malformed historical URLs and continue looking.
+    }
+  }
+  return '';
+}
+
+export function oasisTransactionIdFromPayload(payload = {}, lead = {}) {
+  const object = payload.data?.object || {};
+  return safeOasisIdentifier(firstTruthy(
+    lead.purchase?.orderId,
+    object.processorTransactionId,
+    object.stripeChargeId,
+    object.id,
+    object.invoice?.id,
+    payload.transaction_id,
+    payload.transactionId,
+    payload.order_id,
+    payload.orderId,
+    lead.rimo?.orderId
+  ));
+}
+
+export function buildOasisPurchasePostbackUrl(
+  lead,
+  payload = {},
+  endpoint = 'https://trkc115.com/pixel',
+  eventId = 'E5825'
+) {
+  const attribution = lead?.attribution || {};
+  const source = clean(firstTruthy(attribution.utm_source, attribution.source)).toLowerCase();
+  if (source !== 'oasis') return '';
+
+  const sessionId = oasisSessionIdFromLead(lead);
+  const transactionId = oasisTransactionIdFromPayload(payload, lead);
+  if (!sessionId || !transactionId) return '';
+
+  const url = new URL(endpoint);
+  url.searchParams.set('session_id', sessionId);
+  url.searchParams.set('transaction_id', transactionId);
+  url.searchParams.set('event_id', clean(eventId) || 'E5825');
+  return url.toString();
+}
+
+export async function sendOasisPurchasePostback(env, lead, payload = {}, fetchImpl = fetch) {
+  const url = buildOasisPurchasePostbackUrl(
+    lead,
+    payload,
+    clean(env.OASIS_POSTBACK_URL || '') || 'https://trkc115.com/pixel',
+    clean(env.OASIS_EVENT_ID || '') || 'E5825'
+  );
+  if (!url) return { ok: false, skipped: 'not_eligible' };
+
+  const parsed = new URL(url);
+  const transactionId = parsed.searchParams.get('transaction_id');
+  const sessionId = parsed.searchParams.get('session_id');
+  const dedupeKey = `oasis_purchase:${encodeURIComponent(transactionId)}`;
+  const existingRaw = await env.TIDEMEDIX_LEADS.get(dedupeKey);
+  if (existingRaw) {
+    try {
+      const existing = JSON.parse(existingRaw);
+      if (existing.ok) return { ok: true, duplicate: true, transactionId };
+    } catch (_) {
+      // A malformed/legacy audit row is not proof that the postback succeeded.
+    }
+  }
+
+  let response = null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      response = await fetchImpl(url, {
+        method: 'GET',
+        headers: { accept: 'text/plain, text/html;q=0.9, */*;q=0.8' },
+        redirect: 'follow'
+      });
+      if (response.ok) break;
+      lastError = new Error(`Oasis postback returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 500));
+  }
+
+  const now = new Date().toISOString();
+  const result = {
+    ok: Boolean(response?.ok),
+    status: Number(response?.status || 0),
+    sentAt: now,
+    eventId: clean(env.OASIS_EVENT_ID || '') || 'E5825',
+    transactionId,
+    sessionIdSuffix: sessionId.slice(-8)
+  };
+  await env.TIDEMEDIX_LEADS.put(dedupeKey, JSON.stringify(result), { expirationTtl: 400 * 24 * 60 * 60 });
+  await env.TIDEMEDIX_LEADS.put(
+    `oasis_event:${lead.id}:purchase:${Date.now()}`,
+    JSON.stringify({ leadId: lead.id, ...result }),
+    { expirationTtl: 400 * 24 * 60 * 60 }
+  );
+
+  const fresh = (await getLead(env, lead.id)) || lead;
+  fresh.oasis = fresh.oasis || {};
+  fresh.oasis.purchase = result;
+  fresh.updatedAt = now;
+  await env.TIDEMEDIX_LEADS.put(`lead:${fresh.id}`, JSON.stringify(fresh));
+
+  if (!response?.ok) throw lastError || new Error('Oasis postback failed');
+  return result;
+}
+
 // ---------- Meta Conversions API ----------
 
 async function sendMetaPurchaseEvent(env, lead, request, payload = {}) {
@@ -1866,6 +2016,18 @@ async function getLead(env, id) {
   return raw ? JSON.parse(raw) : null;
 }
 
+function attributionFromRimoPayload(payload = {}) {
+  const object = payload.data?.object || {};
+  const session = object.mostRecentSession || object.currentSession || object.sessions?.[0] || {};
+  const query = session.queryParams || session.query_params || {};
+  const attribution = {};
+  for (const key of ATTRIBUTION_KEYS) {
+    const value = firstTruthy(query[key], payload[key], payload.attribution?.[key], payload.utm?.[key]);
+    if (value !== undefined && value !== null && value !== '') attribution[key] = clean(value);
+  }
+  return attribution;
+}
+
 async function upsertLeadFromRimoPayload(env, payload, eventType, now) {
   const email = emailFromPayload(payload);
   if (!email) return { email: '', leadId: null };
@@ -1892,7 +2054,12 @@ async function upsertLeadFromRimoPayload(env, payload, eventType, now) {
     plan: normalizePlan(firstTruthy(payload.plan, payload.product, payload.product_name, order?.product, order?.product_name, existing?.plan)),
     value: Number(amount || existing?.value || 0),
     checkoutUrl: cleanUrl(firstTruthy(payload.checkoutUrl, payload.checkout_url, payload.checkout?.url, existing?.checkoutUrl)),
-    attribution: { ...(existing?.attribution || {}), ...(payload.attribution || {}), ...(payload.utm || {}) },
+    attribution: {
+      ...(existing?.attribution || {}),
+      ...attributionFromRimoPayload(payload),
+      ...(payload.attribution || {}),
+      ...(payload.utm || {})
+    },
     rimo: {
       ...(existing?.rimo || {}),
       lastEventType: eventType,
@@ -1933,8 +2100,19 @@ async function markPurchaseFromPayload(env, payload, now) {
 
   const lead = await getLead(env, id);
   if (!lead) return { email, leadId: null, marked: false };
-  const order = payload.order || payload.data?.order || payload.checkout || payload.data?.checkout || payload;
-  const incomingOrderId = clean(firstTruthy(payload.orderId, payload.order_id, order?.id, order?.order_id, order?.orderId));
+  const object = payload.data?.object || {};
+  const order = payload.order || payload.data?.order || payload.checkout || payload.data?.checkout || object.order || object.checkout || object;
+  const incomingOrderId = clean(firstTruthy(
+    payload.orderId,
+    payload.order_id,
+    object.processorTransactionId,
+    object.stripeChargeId,
+    object.id,
+    object.invoice?.id,
+    order?.id,
+    order?.order_id,
+    order?.orderId
+  ));
   const existingOrderId = clean(lead.purchase?.orderId || lead.rimo?.orderId || '');
   const alreadyPurchased = Boolean(lead.purchasedAt || lead.status === 'purchased');
   const alreadySentToMeta = Boolean(lead.meta?.purchase?.ok);
@@ -1948,7 +2126,7 @@ async function markPurchaseFromPayload(env, payload, now) {
     ...(lead.purchase || {}),
     orderId: clean(firstTruthy(incomingOrderId, lead.purchase?.orderId)),
     amount: Number(amountFromPayload(payload) || lead.value || lead.purchase?.amount || 0),
-    currency: clean(firstTruthy(payload.currency, order?.currency, lead.purchase?.currency, 'USD'))
+    currency: clean(firstTruthy(payload.currency, object.currency, object.invoice?.currency, order?.currency, lead.purchase?.currency, 'USD'))
   };
   lead.rimo = {
     ...(lead.rimo || {}),
@@ -2086,9 +2264,22 @@ function primaryTeleformResponse(object = {}) {
   return object.teleformResponses?.[0] || object.teleformResponse || (/teleform_response/.test(clean(object.object || object.type || '')) || object.teleformId || object.responseToken ? object : {});
 }
 
-function isPurchaseEvent(eventType, payload = {}) {
+export function isPaidChargeCapturedEvent(eventType, payload = {}) {
+  if (clean(eventType).toLowerCase() !== 'charge.captured') return false;
+  const object = payload.data?.object || {};
+  const chargeStatus = clean(firstTruthy(object.status, payload.status)).toLowerCase();
+  const invoiceStatus = clean(firstTruthy(object.invoice?.status, payload.invoice?.status)).toLowerCase();
+  const capturedAmount = Number(firstTruthy(object.capturedAmount, payload.capturedAmount, object.amount, payload.amount, 0));
+  return chargeStatus === 'captured'
+    && invoiceStatus === 'paid'
+    && Number.isFinite(capturedAmount)
+    && capturedAmount > 0;
+}
+
+export function isPurchaseEvent(eventType, payload = {}) {
+  if (isPaidChargeCapturedEvent(eventType, payload)) return true;
   const status = clean(payload.status || payload.order?.status || payload.data?.order?.status || payload.checkout?.status).toLowerCase();
-  return /purchase|order.*(paid|complete|created|success)|payment.*(paid|success|complete)|subscription.*(created|active)/.test(eventType) || /paid|complete|completed|success|active/.test(status);
+  return /purchase|order.*(paid|complete|success)|payment.*(paid|success|complete)|subscription.*(created|active)/.test(eventType) || /paid|complete|completed|success|active/.test(status);
 }
 
 async function verifyWebhookSignature(request, rawBody, secret) {

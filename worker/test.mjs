@@ -11,6 +11,7 @@ import {
   buildEmailDeliveryStats,
   buildLeadEventStats,
   buildMetaPurchaseEventPayload,
+  buildOasisPurchasePostbackUrl,
   buildRouteAuditRow,
   buildEmailClickUrl,
   buildCheckoutBridgeUrl,
@@ -22,8 +23,13 @@ import {
   classifyLeadForDashboard,
   extractAttributionFromLeadBody,
   isCompletedNoPurchaseEvent,
+  isPaidChargeCapturedEvent,
+  isPurchaseEvent,
   mergeLeadAttribution,
   normalizeSesEvent,
+  oasisSessionIdFromLead,
+  oasisTransactionIdFromPayload,
+  sendOasisPurchasePostback,
   shouldConsiderAbandonLead,
   shouldConsiderBuyerLead,
   shouldConsiderCheckoutLead,
@@ -49,7 +55,7 @@ test('lead-event stats reconcile raw submissions against new unique leads', () =
 
 test('lead attribution is extracted from Rimo page URLs', () => {
   const attribution = extractAttributionFromLeadBody({
-    page: 'https://go.tidemedix.com/?utm_source=facebook&utm_medium=paid&utm_campaign=Leads-WellnessCenter-Customers&utm_content=Pill%20Pull%20Out%20Box&utm_term=WellnessCenter-Customers-Lookalike&fbclid=FB123',
+    page: 'https://go.tidemedix.com/?utm_source=facebook&utm_medium=paid&utm_campaign=Leads-WellnessCenter-Customers&utm_content=Pill%20Pull%20Out%20Box&utm_term=WellnessCenter-Customers-Lookalike&fbclid=FB123&c3=affiliate-session-123',
     attribution: { source: 'rimo_customjs' }
   });
 
@@ -59,6 +65,7 @@ test('lead attribution is extracted from Rimo page URLs', () => {
   assert.equal(attribution.utm_content, 'Pill Pull Out Box');
   assert.equal(attribution.utm_term, 'WellnessCenter-Customers-Lookalike');
   assert.equal(attribution.fbclid, 'FB123');
+  assert.equal(attribution.c3, 'affiliate-session-123');
   assert.equal(attribution.source, 'rimo_customjs');
 });
 
@@ -515,10 +522,10 @@ test('Meta Purchase CAPI payload reads Rimo charge cents from data.object', asyn
   assert.equal(event.custom_data.value, 785);
 });
 
-test('purchase webhooks only enqueue buyer email and Meta CAPI when the purchase is newly marked', () => {
+test('purchase webhooks only enqueue buyer email and downstream purchase attribution when newly marked', () => {
   const source = readFileSync(new URL('./src/index.js', import.meta.url), 'utf8');
-  assert.match(source, /if \(result\.marked\) \{\s*enqueueBuyerDayZero\(env, result\.lead, ctx\);\s*enqueueMetaPurchaseEvent\(env, result\.lead, request, body, ctx\);\s*\}/s);
-  assert.match(source, /if \(purchaseResult\?\.marked\) \{\s*enqueueBuyerDayZero\(env, purchaseResult\?\.lead, ctx\);\s*enqueueMetaPurchaseEvent\(env, purchaseResult\?\.lead, request, payload, ctx\);\s*\}/s);
+  assert.match(source, /if \(result\.marked\) \{\s*enqueueBuyerDayZero\(env, result\.lead, ctx\);\s*enqueuePurchaseAttributionEvents\(env, result\.lead, request, body, ctx\);\s*\}/s);
+  assert.match(source, /if \(purchaseResult\?\.marked\) \{\s*enqueueBuyerDayZero\(env, purchaseResult\?\.lead, ctx\);\s*enqueuePurchaseAttributionEvents\(env, purchaseResult\?\.lead, request, payload, ctx\);\s*\}/s);
   assert.match(source, /duplicate: Boolean\(result\.duplicate\)/);
 });
 
@@ -527,6 +534,80 @@ test('repeat purchase webhooks are detected after Meta has already accepted the 
   assert.match(source, /const alreadyPurchased = Boolean\(lead\.purchasedAt \|\| lead\.status === 'purchased'\);/);
   assert.match(source, /const alreadySentToMeta = Boolean\(lead\.meta\?\.purchase\?\.ok\);/);
   assert.match(source, /return \{ email, leadId: id, marked: false, duplicate: true, lead \};/);
+});
+
+test('only a captured Rimo charge with a paid invoice is a doctor-flow purchase signal', () => {
+  const authorized = {
+    data: { object: { status: 'AUTHORIZED', amount: 100, invoice: { status: 'DRAFT' } } }
+  };
+  const capturedUnpaid = {
+    data: { object: { status: 'CAPTURED', capturedAmount: 100, invoice: { status: 'DRAFT' } } }
+  };
+  const capturedPaid = {
+    data: { object: { status: 'CAPTURED', capturedAmount: 100, invoice: { status: 'PAID' } } }
+  };
+
+  assert.equal(isPaidChargeCapturedEvent('charge.authorized', authorized), false);
+  assert.equal(isPaidChargeCapturedEvent('charge.captured', capturedUnpaid), false);
+  assert.equal(isPaidChargeCapturedEvent('charge.captured', capturedPaid), true);
+  assert.equal(isPurchaseEvent('charge.authorized', authorized), false);
+  assert.equal(isPurchaseEvent('order.created', { data: { object: { status: 'INITIAL_PROCESSING' } } }), false);
+  assert.equal(isPurchaseEvent('charge.captured', capturedPaid), true);
+});
+
+test('Oasis postback uses saved c3 and a real Rimo transaction id', () => {
+  const lead = {
+    attribution: {
+      utm_source: 'oasis',
+      page: 'https://try.tidemedix.com/intake/test?c2=DT&c3=0a6a9331a3cd4ac5156dc5cb4e281590c6064b2c'
+    },
+    purchase: { orderId: 'pi_real_transaction_123' }
+  };
+  const payload = { data: { object: { id: 'rimo-charge-1', processorTransactionId: 'pi_real_transaction_123' } } };
+
+  assert.equal(oasisSessionIdFromLead(lead), '0a6a9331a3cd4ac5156dc5cb4e281590c6064b2c');
+  assert.equal(oasisTransactionIdFromPayload(payload, lead), 'pi_real_transaction_123');
+  const url = new URL(buildOasisPurchasePostbackUrl(lead, payload));
+  assert.equal(url.origin + url.pathname, 'https://trkc115.com/pixel');
+  assert.equal(url.searchParams.get('session_id'), '0a6a9331a3cd4ac5156dc5cb4e281590c6064b2c');
+  assert.equal(url.searchParams.get('transaction_id'), 'pi_real_transaction_123');
+  assert.equal(url.searchParams.get('event_id'), 'E5825');
+});
+
+test('Oasis postback skips non-Oasis traffic and deduplicates a successful transaction', async () => {
+  const values = new Map();
+  const env = {
+    TIDEMEDIX_LEADS: {
+      async get(key) { return values.get(key) || null; },
+      async put(key, value) { values.set(key, value); }
+    }
+  };
+  const lead = {
+    id: 'lead-oasis-test',
+    status: 'purchased',
+    attribution: { utm_source: 'oasis', c3: 'session_abc123' },
+    purchase: { orderId: 'rimo_charge_987', amount: 1, currency: 'USD' }
+  };
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls += 1;
+    return new Response('', { status: 200 });
+  };
+
+  const first = await sendOasisPurchasePostback(env, lead, {}, fakeFetch);
+  const second = await sendOasisPurchasePostback(env, lead, {}, fakeFetch);
+  assert.equal(first.ok, true);
+  assert.equal(second.duplicate, true);
+  assert.equal(calls, 1);
+
+  const nonOasis = await sendOasisPurchasePostback(env, {
+    ...lead,
+    id: 'lead-meta-test',
+    attribution: { utm_source: 'facebook', c3: 'not_an_oasis_session' },
+    purchase: { orderId: 'other_transaction' }
+  }, {}, fakeFetch);
+  assert.equal(nonOasis.skipped, 'not_eligible');
+  assert.equal(calls, 1);
 });
 
 test('SES SNS notification normalizer extracts tags, event type, and message id', () => {
