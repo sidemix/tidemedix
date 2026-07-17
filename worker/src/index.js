@@ -72,6 +72,7 @@ export default {
       if (url.pathname === '/leads' && request.method === 'GET') return handleLeadDashboard(request, env);
       if (url.pathname === '/api/leads' && request.method === 'GET') return handleLeadDashboardApi(request, env);
       if (url.pathname === '/api/leads-summary' && request.method === 'GET') return handleLeadDashboardApi(request, env);
+      if (url.pathname === '/api/cpa-export.csv' && request.method === 'GET') return handleCpaExport(request, env);
       if (url.pathname === '/api/test-followup' && request.method === 'POST') return handleTestFollowup(request, env);
       if (url.pathname === '/api/lead' && request.method === 'POST') return handleLead(request, env, ctx);
       if (url.pathname === '/api/rimo-client-lead' && ['GET', 'POST'].includes(request.method)) return handleRimoClientLead(request, env, ctx);
@@ -109,7 +110,7 @@ async function handleLeadDashboardApi(request, env) {
   const url = new URL(request.url);
   const view = clean(url.searchParams.get('view') || 'summary');
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 100), 1), 500);
-  const leads = await listStoredLeads(env, 1000);
+  const leads = mergeLeadLists(await listStoredLeads(env, 1000), await listStoredCpaLeads(env, 1000));
   const clicks = await listStoredEmailClicks(env, 500);
   const leadEvents = await listStoredLeadEvents(env, 1000);
   const summary = buildLeadViews(leads);
@@ -127,9 +128,25 @@ async function handleLeadDashboardApi(request, env) {
     totalLeads: summary.totalLeads,
     counts: summary.counts,
     leadEventStats,
+    cpaOperations: buildCpaOperations(leads),
     emailClickStats,
     emailDeliveryStats: buildEmailDeliveryStats(leads),
     views: Object.fromEntries(Object.entries(summary.views).map(([key, rows]) => [key, rows.slice(0, limit)]))
+  });
+}
+
+async function handleCpaExport(request, env) {
+  const auth = authorizeLeadDashboard(request, env);
+  if (!auth.ok) return json(request, { ok: false, error: auth.error }, auth.status);
+  const leads = mergeLeadLists(await listStoredLeads(env, 1000), await listStoredCpaLeads(env, 1000));
+  const csv = buildCpaOperationsCsv(buildCpaOperations(leads));
+  return new Response(csv, {
+    status: 200,
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="tidemedix-cpa-operations-${new Date().toISOString().slice(0, 10)}.csv"`,
+      'cache-control': 'no-store'
+    }
   });
 }
 
@@ -234,6 +251,37 @@ async function listStoredLeads(env, max = 1000) {
     }
   } while (cursor);
   return sortLeads(leads);
+}
+
+async function listStoredCpaLeads(env, max = 1000) {
+  const leads = [];
+  let cursor;
+  do {
+    const page = await env.TIDEMEDIX_LEADS.list({ prefix: 'cpa_lead:', cursor, limit: 100 });
+    cursor = page.cursor;
+    for (const key of page.keys) {
+      const id = key.name.replace(/^cpa_lead:/, '');
+      const lead = await getLead(env, id);
+      if (lead?.email) leads.push(sanitizeLeadForDashboard(lead));
+      if (leads.length >= max) return sortLeads(leads);
+    }
+  } while (cursor);
+  return sortLeads(leads);
+}
+
+function mergeLeadLists(...lists) {
+  const byId = new Map();
+  for (const list of lists) {
+    for (const lead of list || []) {
+      if (lead?.id) byId.set(lead.id, lead);
+    }
+  }
+  return sortLeads([...byId.values()]);
+}
+
+async function indexCpaLead(env, lead) {
+  if (!lead?.id || !isCpaLead(lead)) return;
+  await env.TIDEMEDIX_LEADS.put(`cpa_lead:${lead.id}`, lead.id);
 }
 
 async function listStoredEmailClicks(env, max = 500) {
@@ -583,8 +631,227 @@ function sanitizeLeadForDashboard(lead) {
     utm_campaign: attribution.utm_campaign || '',
     utm_content: attribution.utm_content || '',
     utm_term: attribution.utm_term || '',
-    fbclid: attribution.fbclid || ''
+    fbclid: attribution.fbclid || '',
+    purchaseSummary: {
+      hasTransaction: Boolean(lead.purchase?.orderId || lead.rimo?.orderId),
+      transactionIdSuffix: suffixIdentifier(lead.purchase?.orderId || lead.rimo?.orderId),
+      amount: Number(lead.purchase?.amount || lead.value || 0),
+      currency: clean(lead.purchase?.currency || 'USD') || 'USD'
+    },
+    cpaPostback: sanitizeCpaPostback(lead.oasis?.purchase || lead.cpaPostback || {}),
+    commission: sanitizeCommission(lead.commission || {}),
+    stripeRisk: sanitizeStripeRisk(lead.stripe || lead.payment?.stripe || {})
   };
+}
+
+function suffixIdentifier(value, size = 8) {
+  const normalized = clean(value || '');
+  return normalized ? normalized.slice(-Math.max(1, size)) : '';
+}
+
+function sanitizeCpaPostback(value = {}) {
+  return {
+    ok: Boolean(value.ok),
+    status: Number(value.status || 0),
+    sentAt: clean(value.sentAt || ''),
+    eventId: clean(value.eventId || ''),
+    transactionIdSuffix: suffixIdentifier(value.transactionId || ''),
+    sessionIdSuffix: suffixIdentifier(value.sessionIdSuffix || value.sessionId || '')
+  };
+}
+
+function sanitizeCommission(value = {}) {
+  return {
+    status: clean(value.status || ''),
+    reason: clean(value.reason || ''),
+    amount: Number(value.amount || 0),
+    payableAt: clean(value.payableAt || ''),
+    paidAt: clean(value.paidAt || ''),
+    reversedAt: clean(value.reversedAt || '')
+  };
+}
+
+function sanitizeStripeRisk(value = {}) {
+  return {
+    riskLevel: clean(value.riskLevel || value.risk_level || ''),
+    threeDSecure: clean(value.threeDSecure || value.three_d_secure || ''),
+    disputeStatus: clean(value.disputeStatus || value.dispute_status || ''),
+    refunded: Boolean(value.refunded)
+  };
+}
+
+function cpaAttributionForLead(lead = {}) {
+  return lead.attribution || {};
+}
+
+function isCpaLead(lead = {}) {
+  const attribution = cpaAttributionForLead(lead);
+  const source = clean(attribution.cpa_network || attribution.network || attribution.utm_source || '').toLowerCase();
+  const medium = clean(attribution.utm_medium || '').toLowerCase();
+  const campaign = clean(attribution.utm_campaign || '').toLowerCase();
+  return Boolean(
+    attribution.cpa_network
+    || attribution.network
+    || source === 'oasis'
+    || /affiliate|\bcpa\b/.test(medium)
+    || /affiliate|\bcpa\b/.test(campaign)
+  );
+}
+
+function cpaNetworkForLead(lead = {}) {
+  const attribution = cpaAttributionForLead(lead);
+  return clean(attribution.cpa_network || attribution.network || attribution.utm_source || attribution.source || 'unknown').toLowerCase() || 'unknown';
+}
+
+function cpaPublisherForLead(lead = {}) {
+  const attribution = cpaAttributionForLead(lead);
+  return clean(
+    attribution.publisher_id
+    || attribution.publisherId
+    || attribution.sub_affiliate_id
+    || attribution.subAffiliateId
+    || attribution.subid
+    || attribution.sub_id
+    || attribution.c2
+    || 'unassigned'
+  ) || 'unassigned';
+}
+
+function commissionStatusForLead(lead = {}, buyer = false) {
+  const explicit = clean(lead.commission?.status || '').toLowerCase();
+  if (/reversed|refund|dispute|chargeback|fraud/.test(explicit)) return 'reversed';
+  if (explicit === 'paid') return 'paid';
+  if (explicit === 'payable' || explicit === 'approved') return 'payable';
+  return buyer ? 'pending' : 'not_earned';
+}
+
+function incrementCpaRollup(map, key, row) {
+  if (!map.has(key)) {
+    map.set(key, {
+      network: row.network,
+      publisher: row.publisher,
+      leads: 0,
+      completed: 0,
+      buyers: 0,
+      revenue: 0,
+      pending: 0,
+      payable: 0,
+      paid: 0,
+      reversed: 0,
+      flagged: 0,
+      emailAssisted: 0
+    });
+  }
+  const item = map.get(key);
+  item.leads += 1;
+  if (row.intakeCompleted) item.completed += 1;
+  if (row.isBuyer) item.buyers += 1;
+  if (row.isBuyer) item.revenue += row.value;
+  if (row.commissionStatus === 'pending') item.pending += 1;
+  if (row.commissionStatus === 'payable') item.payable += 1;
+  if (row.commissionStatus === 'paid') item.paid += 1;
+  if (row.commissionStatus === 'reversed') item.reversed += 1;
+  if (row.alerts.length) item.flagged += 1;
+  if (row.emailAssisted) item.emailAssisted += 1;
+}
+
+export function buildCpaOperations(leads = [], now = new Date()) {
+  const rows = [];
+  for (const lead of leads) {
+    if (!isCpaLead(lead)) continue;
+    const attribution = cpaAttributionForLead(lead);
+    const purchaseSummary = lead.purchaseSummary || {};
+    const postback = lead.cpaPostback || sanitizeCpaPostback(lead.oasis?.purchase || {});
+    const stripeRisk = lead.stripeRisk || sanitizeStripeRisk(lead.stripe || lead.payment?.stripe || {});
+    const isBuyer = Boolean(lead.purchasedAt || lead.status === 'purchased' || lead.leadStage === 'buyer');
+    const intakeCompleted = Boolean(isBuyer || lead.leadStage === 'completed_no_purchase' || Number(lead.progress || 0) >= 100);
+    const hasTransaction = Boolean(purchaseSummary.hasTransaction || lead.purchase?.orderId || lead.rimo?.orderId);
+    const transactionIdSuffix = suffixIdentifier(purchaseSummary.transactionIdSuffix || lead.purchase?.orderId || lead.rimo?.orderId);
+    const clickId = clean(attribution.c3 || attribution.clickid || '');
+    const commissionStatus = commissionStatusForLead(lead, isBuyer);
+    const postbackStatus = postback.ok ? 'sent' : (Number(postback.status || 0) ? 'failed' : 'not_sent');
+    const emailAssisted = clean(attribution.last_touch_source || '').toLowerCase() === 'email' || Object.keys(lead.clicks || {}).length > 0;
+    const alerts = [];
+    if (!clickId) alerts.push('missing_click_id');
+    if (cpaPublisherForLead(lead) === 'unassigned') alerts.push('missing_publisher');
+    if (isBuyer && !hasTransaction) alerts.push('missing_transaction');
+    if (isBuyer && postbackStatus === 'failed') alerts.push('postback_failed');
+    if (isBuyer && postbackStatus === 'not_sent') alerts.push('approved_not_posted');
+    if (commissionStatus === 'reversed') alerts.push(clean(lead.commission?.reason || '') || 'commission_reversed');
+    if (/elevated|highest|high/.test(clean(stripeRisk.riskLevel).toLowerCase())) alerts.push('stripe_risk');
+    if (stripeRisk.refunded) alerts.push('refunded');
+    if (stripeRisk.disputeStatus) alerts.push('dispute');
+
+    rows.push({
+      leadId: clean(lead.id || ''),
+      network: cpaNetworkForLead(lead),
+      publisher: cpaPublisherForLead(lead),
+      campaign: clean(attribution.utm_campaign || ''),
+      clickIdSuffix: suffixIdentifier(clickId),
+      transactionIdSuffix,
+      stage: clean(lead.leadStage || lead.status || 'unknown') || 'unknown',
+      progress: Number(lead.progress || 0),
+      value: Number(lead.value || purchaseSummary.amount || lead.purchase?.amount || 0),
+      isBuyer,
+      intakeCompleted,
+      emailAssisted,
+      commissionStatus,
+      postbackStatus,
+      stripeRiskLevel: clean(stripeRisk.riskLevel || ''),
+      threeDSecure: clean(stripeRisk.threeDSecure || ''),
+      alerts,
+      createdAt: clean(lead.createdAt || ''),
+      updatedAt: clean(lead.updatedAt || ''),
+      purchasedAt: clean(lead.purchasedAt || ''),
+      ageDays: Math.max(0, Math.floor((now.getTime() - new Date(lead.createdAt || now).getTime()) / (24 * 60 * 60 * 1000)))
+    });
+  }
+
+  rows.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+  const networkMap = new Map();
+  const publisherMap = new Map();
+  for (const row of rows) {
+    incrementCpaRollup(networkMap, row.network, row);
+    incrementCpaRollup(publisherMap, `${row.network}:${row.publisher}`, row);
+  }
+  const networks = [...networkMap.values()]
+    .map(({ publisher, ...row }) => row)
+    .sort((a, b) => b.leads - a.leads || a.network.localeCompare(b.network));
+  const publishers = [...publisherMap.values()]
+    .sort((a, b) => b.leads - a.leads || a.network.localeCompare(b.network) || a.publisher.localeCompare(b.publisher));
+  const totals = {
+    leads: rows.length,
+    completed: rows.filter(r => r.intakeCompleted).length,
+    buyers: rows.filter(r => r.isBuyer).length,
+    revenue: rows.filter(r => r.isBuyer).reduce((sum, row) => sum + row.value, 0),
+    pendingCommission: rows.filter(r => r.commissionStatus === 'pending').length,
+    payableCommission: rows.filter(r => r.commissionStatus === 'payable').length,
+    paidCommission: rows.filter(r => r.commissionStatus === 'paid').length,
+    reversed: rows.filter(r => r.commissionStatus === 'reversed').length,
+    flagged: rows.filter(r => r.alerts.length).length,
+    emailAssisted: rows.filter(r => r.emailAssisted).length
+  };
+  return { generatedAt: now.toISOString(), totals, networks, publishers, rows };
+}
+
+function csvSafeValue(value) {
+  let text = String(value ?? '');
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+export function buildCpaOperationsCsv(report = {}) {
+  const headers = ['lead_id', 'network', 'publisher', 'campaign', 'click_id_suffix', 'transaction_id_suffix', 'stage', 'progress', 'value', 'email_assisted', 'commission_status', 'postback_status', 'stripe_risk_level', 'three_d_secure', 'alerts', 'created_at', 'updated_at', 'purchased_at'];
+  const lines = [headers.join(',')];
+  for (const row of report.rows || []) {
+    lines.push([
+      row.leadId, row.network, row.publisher, row.campaign, row.clickIdSuffix,
+      row.transactionIdSuffix, row.stage, row.progress, row.value, row.emailAssisted,
+      row.commissionStatus, row.postbackStatus, row.stripeRiskLevel, row.threeDSecure,
+      (row.alerts || []).join('|'), row.createdAt, row.updatedAt, row.purchasedAt
+    ].map(csvSafeValue).join(','));
+  }
+  return `${lines.join('\n')}\n`;
 }
 
 const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'clickid', 'affId', 'c1', 'c2', 'c3'];
@@ -697,12 +964,12 @@ function renderLeadLoginPage(error) {
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>TideMedix Leads</title><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#07161a;color:#eaf7f6;padding:32px;max-width:720px;margin:auto}input,button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2d555c}button{background:#43d3c4;color:#041013;font-weight:700;cursor:pointer}.card{background:#0d252b;border:1px solid #1f454c;border-radius:18px;padding:24px}</style></head><body><div class="card"><h1>TideMedix Lead Dashboard</h1><p>Status: ${escapeHtml(error || 'token required')}.</p><form onsubmit="event.preventDefault(); const t=document.querySelector('#token').value.trim(); if(t) location.href='/leads?token='+encodeURIComponent(t);"><input id="token" type="password" placeholder="Dashboard token" autofocus> <button>Open</button></form></div></body></html>`;
 }
 
-function renderLeadDashboardPage() {
+export function renderLeadDashboardPage() {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TideMedix Leads</title>
 <style>
-:root{color-scheme:dark;--bg:#061417;--panel:#0d252b;--line:#1f454c;--muted:#8bb5b8;--text:#eaf7f6;--accent:#43d3c4;--hot:#ffca66;--bad:#ff7b7b;--good:#61d394}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#061417,#10262a);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1280px;margin:0 auto;padding:28px}h1{margin:0 0 6px;font-size:28px}p{color:var(--muted)}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.grid{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin:22px 0}.card{background:rgba(13,37,43,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.18)}.metric{cursor:pointer}.metric.active{outline:2px solid var(--accent)}.metric b{display:block;font-size:30px}.metric span{color:var(--muted);font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}.tabs button{background:#0d252b;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:10px 14px;cursor:pointer}.tabs button.active{background:var(--accent);color:#041013;font-weight:800}.table{overflow:auto}.row,.head{display:grid;grid-template-columns:1.35fr .9fr .75fr .65fr .9fr .9fr .8fr;gap:10px;align-items:center;min-width:980px;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.07)}.head{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.name{font-weight:750}.sub{color:var(--muted);font-size:12px;margin-top:2px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:12px;color:var(--muted)}.hot{color:var(--hot)}.good{color:var(--good)}.bad{color:var(--bad)}a{color:var(--accent)}.bar{height:8px;background:#16373d;border-radius:999px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}.small{font-size:12px;color:var(--muted)}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.top{display:block}}
-</style></head><body><main><div class="top"><div><h1>TideMedix Lead Cockpit</h1><p>Rimo funnel events, buyers, abandoners, and follow-up priority from the TideMedix Worker.</p></div><div class="small" id="stamp">Loading…</div></div><section class="grid" id="metrics"></section><section class="card" id="leadEventStats"></section><section class="card" id="clickStats"></section><section class="card"><div class="tabs" id="tabs"></div><div class="table"><div class="head"><div>Lead</div><div>Stage</div><div>Progress</div><div>Value</div><div>Last Step</div><div>Updated</div><div>Actions</div></div><div id="rows"></div></div></section></main>
+:root{color-scheme:dark;--bg:#061417;--panel:#0d252b;--line:#1f454c;--muted:#8bb5b8;--text:#eaf7f6;--accent:#43d3c4;--hot:#ffca66;--bad:#ff7b7b;--good:#61d394}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#061417,#10262a);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1280px;margin:0 auto;padding:28px}h1{margin:0 0 6px;font-size:28px}p{color:var(--muted)}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.grid{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin:22px 0}.card{background:rgba(13,37,43,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.18)}.metric{cursor:pointer}.metric.active{outline:2px solid var(--accent)}.metric b{display:block;font-size:30px}.metric span{color:var(--muted);font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}.tabs button{background:#0d252b;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:10px 14px;cursor:pointer}.tabs button.active{background:var(--accent);color:#041013;font-weight:800}.table{overflow:auto}.row,.head{display:grid;grid-template-columns:1.35fr .9fr .75fr .65fr .9fr .9fr .8fr;gap:10px;align-items:center;min-width:980px;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.07)}.head{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.name{font-weight:750}.sub{color:var(--muted);font-size:12px;margin-top:2px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:12px;color:var(--muted)}.hot{color:var(--hot)}.good{color:var(--good)}.bad{color:var(--bad)}a{color:var(--accent)}.bar{height:8px;background:#16373d;border-radius:999px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}.small{font-size:12px;color:var(--muted)}.action{display:inline-block;background:var(--accent);color:#041013;text-decoration:none;font-weight:850;padding:10px 14px;border-radius:999px}.ops-grid{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;margin:14px 0}.ops-metric{background:#102f35;border:1px solid var(--line);border-radius:14px;padding:12px}.ops-metric b{display:block;font-size:25px}.ops-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ops-columns>div{min-width:0}.ops-row{display:grid;grid-template-columns:1.2fr repeat(6,.65fr);gap:8px;align-items:center;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.07);min-width:560px}.ops-head{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.ops-scroll{overflow:auto}.ops-alerts{margin-top:14px}.ops-alert{display:grid;grid-template-columns:1fr .8fr .8fr 1.5fr .7fr;gap:8px;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.07);min-width:700px}@media(max-width:800px){.ops-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.ops-columns{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.top{display:block}}
+</style></head><body><main><div class="top"><div><h1>TideMedix Lead Cockpit</h1><p>Rimo funnel events, buyers, CPA attribution, commissions, and follow-up priority.</p></div><div><a class="action" id="cpaExport" href="#">Download CPA CSV</a><div class="small" id="stamp" style="margin-top:10px;text-align:right">Loading…</div></div></div><section class="grid" id="metrics"></section><section class="card" id="cpaOps"></section><section class="card" id="leadEventStats"></section><section class="card" id="clickStats"></section><section class="card"><div class="tabs" id="tabs"></div><div class="table"><div class="head"><div>Lead</div><div>Stage</div><div>Progress</div><div>Value</div><div>Last Step</div><div>Updated</div><div>Actions</div></div><div id="rows"></div></div></section></main>
 <script>
 const token=new URL(location.href).searchParams.get('token')||localStorage.tidemedixLeadToken||''; if(token) localStorage.tidemedixLeadToken=token;
 const labels={hot_leads:'Hot Leads',completed_no_purchase:'Completed No Purchase',checkout_abandoners:'Checkout Abandoners',new_leads_today:'New Today',buyers:'Buyers',needs_follow_up:'Needs Follow-up',disqualified:'Disqualified',all:'All Leads'};
@@ -716,9 +983,11 @@ function stepLabel(c){return c.label||c.step||'unknown'}
 function routeAuditRows(rows){return (rows||[]).slice(0,10).map(c=>'<div class="row" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div><div class="name">'+esc(stepLabel(c))+'</div><div class="sub">'+esc(c.step)+'</div></div><div>'+esc(c.expectedTarget||'—')+'</div><div>'+esc(c.actualTarget||'—')+'</div><div>'+esc(c.expectedRimoStepLabel||c.expectedRimoStep||'—')+'</div><div>'+esc(c.actualRimoStepLabel||c.actualRimoStep||'—')+'</div><div><span class="pill '+auditStatusClass(c.status)+'">'+esc(c.statusLabel||c.status)+'</span></div><div>'+ago(c.timestamp)+'</div></div>').join('')}
 function renderLeadEventStats(){const s=data.leadEventStats||{totalEvents:0,newUniqueLeads:0,repeatSubmissions:0,bySource:{},byLeadType:{},byDay:{}}; document.getElementById('leadEventStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Lead Event Ledger</h2><p style="margin-top:0">Backend raw lead submissions are now separate from unique saved leads. Use this to reconcile Meta Lead events vs backend lead events vs unique backend leads.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Backend lead events</div><b>'+Number(s.totalEvents||0)+'</b></div><div><div class="small">New unique leads</div><b>'+Number(s.newUniqueLeads||0)+'</b></div><div><div class="small">Repeat submissions</div><b>'+Number(s.repeatSubmissions||0)+'</b></div><div><div class="small">By source</div>'+mapRows(s.bySource)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">By lead type</div>'+mapRows(s.byLeadType)+'</div><div><div class="small">By day</div>'+mapRows(s.byDay)+'</div></div>'}
 function renderClickStats(){const s=data.emailClickStats||{total:0,byStep:{},byTarget:{},byRimoStep:{},routeStatus:{},routeAudit:[]}; const d=data.emailDeliveryStats||{totals:{},deliveryRate:null,recent:[]}; const pct=d.deliveryRate==null?'pending':Math.round(d.deliveryRate*1000)/10+'%'; document.getElementById('clickStats').innerHTML='<h2 style="margin:0 0 8px;font-size:18px">Email Delivery + Route Audit</h2><p style="margin-top:0">SES confirms provider delivery. Route audit surfaces Needs Review first, then Checks, then OK routes. Needs Review means the email expected one destination but the clicked link tracked a different target.</p><div class="grid" style="grid-template-columns:repeat(4,minmax(160px,1fr));margin:12px 0"><div><div class="small">Delivery status</div>'+mapRows(d.totals)+'</div><div><div class="small">Delivery rate</div><span class="pill">'+pct+'</span></div><div><div class="small">Route audit</div>'+routeStatusPills(s.routeStatus)+'</div><div><div class="small">Clicks by Rimo step</div>'+mapRows(s.byRimoStep)+'</div></div><div class="grid" style="grid-template-columns:repeat(2,minmax(220px,1fr));margin:12px 0"><div><div class="small">Clicks by email</div>'+mapRows(s.byStep)+'</div><div><div class="small">Recent delivery events</div>'+((d.recent||[]).slice(0,6).map(e=>'<span class="pill">'+esc(e.step)+': '+esc(e.status)+'</span>').join(' ')||'<span class="small">No SES events yet</span>')+'</div></div><div class="table"><div class="head" style="grid-template-columns:1.2fr .65fr .65fr .9fr .9fr .75fr .65fr;min-width:1040px"><div>Email Step</div><div>Expected Target</div><div>Actual Target</div><div>Expected Rimo Step</div><div>Actual Rimo Step</div><div>Status</div><div>Clicked</div></div>'+routeAuditRows(s.routeAudit)+'</div>'}
+function renderCpaOps(){const c=data.cpaOperations||{totals:{},networks:[],publishers:[],rows:[]};const t=c.totals||{};document.getElementById('cpaExport').href='/api/cpa-export.csv?token='+encodeURIComponent(token);const metrics=[['CPA leads',t.leads||0],['Intake completed',t.completed||0],['Approved buyers',t.buyers||0],['Revenue','$'+Number(t.revenue||0).toFixed(0)],['Pending commission',t.pendingCommission||0],['Needs review',t.flagged||0]];const rollup=(rows,publisher)=>'<div class="ops-scroll"><div class="ops-row ops-head"><div>'+(publisher?'Publisher':'Network')+'</div><div>Leads</div><div>Complete</div><div>Buyers</div><div>Pending</div><div>Reversed</div><div>Flags</div></div>'+((rows||[]).map(r=>'<div class="ops-row"><div><div class="name">'+esc(publisher?(r.network+' / '+r.publisher):r.network)+'</div><div class="sub">Email-assisted: '+Number(r.emailAssisted||0)+'</div></div><div>'+Number(r.leads||0)+'</div><div>'+Number(r.completed||0)+'</div><div class="good">'+Number(r.buyers||0)+'</div><div class="hot">'+Number(r.pending||0)+'</div><div class="bad">'+Number(r.reversed||0)+'</div><div class="'+(r.flagged?'bad':'good')+'">'+Number(r.flagged||0)+'</div></div>').join('')||'<p class="small">No CPA traffic recorded yet.</p>')+'</div>';const flagged=(c.rows||[]).filter(r=>(r.alerts||[]).length).slice(0,20);const alerts='<div class="ops-alerts"><h3 style="margin-bottom:6px">Reconciliation and fraud-review queue</h3><div class="ops-scroll"><div class="ops-alert ops-head"><div>Network / publisher</div><div>Stage</div><div>Commission</div><div>Alert</div><div>Updated</div></div>'+(flagged.map(r=>'<div class="ops-alert"><div><div class="name">'+esc(r.network)+' / '+esc(r.publisher)+'</div><div class="sub">Click …'+esc(r.clickIdSuffix||'missing')+' · Txn …'+esc(r.transactionIdSuffix||'missing')+'</div></div><div>'+esc(r.stage)+'</div><div><span class="pill '+(r.commissionStatus==='reversed'?'bad':(r.commissionStatus==='pending'?'hot':'good'))+'">'+esc(r.commissionStatus)+'</span></div><div>'+r.alerts.map(a=>'<span class="pill bad">'+esc(a.replace(/_/g,' '))+'</span>').join(' ')+'</div><div>'+ago(r.updatedAt||r.createdAt)+'</div></div>').join('')||'<p class="small">No CPA alerts. Clean and boring—the preferred flight profile.</p>')+'</div></div>';document.getElementById('cpaOps').innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><h2 style="margin:0 0 6px;font-size:20px">CPA Operations</h2><p style="margin:0">Attribution, email assists, approved sales, commission state, and exceptions. Click and transaction IDs are suffix-only.</p></div><span class="pill '+((t.flagged||0)?'hot':'good')+'">'+Number(t.flagged||0)+' flagged</span></div><div class="ops-grid">'+metrics.map(m=>'<div class="ops-metric"><b>'+esc(m[1])+'</b><span class="small">'+esc(m[0])+'</span></div>').join('')+'</div><div class="ops-columns"><div><h3>Networks</h3>'+rollup(c.networks,false)+'</div><div><h3>Publishers</h3>'+rollup(c.publishers,true)+'</div></div>'+alerts}
 function render(){document.getElementById('stamp').textContent='Updated '+new Date(data.generatedAt).toLocaleString()+' · '+data.totalLeads+' total';
  const metricKeys=['hot_leads','completed_no_purchase','checkout_abandoners','buyers','needs_follow_up'];
  document.getElementById('metrics').innerHTML=metricKeys.map(k=>\`<div class="card metric \${current===k?'active':''}" onclick="show('\${k}')"><b>\${data.counts[k]||0}</b><span>\${labels[k]}</span></div>\`).join('');
+ renderCpaOps();
  renderLeadEventStats();
  renderClickStats();
  const tabs=['hot_leads','completed_no_purchase','checkout_abandoners','needs_follow_up','buyers','new_leads_today','disqualified','all'];
@@ -822,6 +1091,7 @@ async function saveLeadFromBody(request, env, ctx, body) {
 
   await env.TIDEMEDIX_LEADS.put(`lead:${id}`, JSON.stringify(lead));
   await env.TIDEMEDIX_LEADS.put(`email:${email}`, id);
+  await indexCpaLead(env, lead);
   await recordLeadSubmissionEvent(env, lead, body, now, { isNewLead: !existingId });
 
   // Send immediate checkout-started welcome email (don't block response). Skip
@@ -1924,6 +2194,7 @@ export async function sendOasisPurchasePostback(env, lead, payload = {}, fetchIm
   fresh.oasis.purchase = result;
   fresh.updatedAt = now;
   await env.TIDEMEDIX_LEADS.put(`lead:${fresh.id}`, JSON.stringify(fresh));
+  await indexCpaLead(env, fresh);
 
   if (!response?.ok) throw lastError || new Error('Oasis postback failed');
   return result;
@@ -2111,6 +2382,7 @@ async function upsertLeadFromRimoPayload(env, payload, eventType, now) {
 
   await env.TIDEMEDIX_LEADS.put(`lead:${id}`, JSON.stringify(lead));
   await env.TIDEMEDIX_LEADS.put(`email:${email}`, id);
+  await indexCpaLead(env, lead);
   return { email, leadId: id, lead };
 }
 
@@ -2158,6 +2430,7 @@ async function markPurchaseFromPayload(env, payload, now) {
   };
   lead.updatedAt = now;
   await env.TIDEMEDIX_LEADS.put(`lead:${id}`, JSON.stringify(lead));
+  await indexCpaLead(env, lead);
   return { email, leadId: id, marked: true, lead };
 }
 

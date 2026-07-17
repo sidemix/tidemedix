@@ -10,6 +10,8 @@ import {
   buildEmailClickStats,
   buildEmailDeliveryStats,
   buildLeadEventStats,
+  buildCpaOperations,
+  buildCpaOperationsCsv,
   buildMetaPurchaseEventPayload,
   buildOasisPurchasePostbackUrl,
   buildRouteAuditRow,
@@ -29,6 +31,7 @@ import {
   normalizeSesEvent,
   oasisSessionIdFromLead,
   oasisTransactionIdFromPayload,
+  renderLeadDashboardPage,
   sendOasisPurchasePostback,
   shouldConsiderAbandonLead,
   shouldConsiderBuyerLead,
@@ -51,6 +54,120 @@ test('lead-event stats reconcile raw submissions against new unique leads', () =
   assert.equal(stats.bySource.checkout_bridge, 1);
   assert.equal(stats.bySource.rimo_customjs, 1);
   assert.equal(stats.byDay['2026-06-09'], 2);
+});
+
+test('CPA operations groups networks and publishers without exposing customer PII', () => {
+  const report = buildCpaOperations([
+    {
+      id: 'lead-cpa-1',
+      email: 'private@example.com',
+      phone: '555-111-2222',
+      leadStage: 'buyer',
+      status: 'purchased',
+      value: 249,
+      progress: 100,
+      createdAt: '2026-07-01T10:00:00Z',
+      updatedAt: '2026-07-02T10:00:00Z',
+      purchasedAt: '2026-07-02T09:00:00Z',
+      attribution: {
+        utm_source: 'oasis',
+        utm_medium: 'affiliate',
+        utm_campaign: 'oasis_glp1_cpa',
+        publisher_id: 'publisher-7',
+        c3: 'CLICK-SECRET-12345678',
+        last_touch_source: 'email'
+      },
+      purchase: { orderId: 'pi_private_transaction_12345678' },
+      oasis: { purchase: { ok: true, status: 200, sentAt: '2026-07-02T09:01:00Z' } }
+    },
+    {
+      id: 'lead-cpa-2',
+      leadStage: 'completed_no_purchase',
+      status: 'completed_no_purchase',
+      value: 149,
+      progress: 100,
+      createdAt: '2026-07-03T10:00:00Z',
+      updatedAt: '2026-07-03T11:00:00Z',
+      attribution: {
+        utm_source: 'oasis',
+        utm_medium: 'affiliate',
+        utm_campaign: 'oasis_glp1_cpa',
+        publisher_id: 'publisher-7',
+        c3: 'CLICK-SECOND-87654321'
+      }
+    }
+  ], new Date('2026-07-10T00:00:00Z'));
+
+  assert.equal(report.totals.leads, 2);
+  assert.equal(report.totals.buyers, 1);
+  assert.equal(report.totals.pendingCommission, 1);
+  assert.equal(report.totals.emailAssisted, 1);
+  assert.equal(report.networks[0].network, 'oasis');
+  assert.equal(report.networks[0].buyers, 1);
+  assert.equal(report.publishers[0].publisher, 'publisher-7');
+  const buyerRow = report.rows.find(r => r.leadId === 'lead-cpa-1');
+  assert.equal(buyerRow.clickIdSuffix.length, 8);
+  assert.equal(buyerRow.transactionIdSuffix.length, 8);
+  assert.equal('email' in buyerRow, false);
+  assert.equal('phone' in buyerRow, false);
+  assert.doesNotMatch(JSON.stringify(report), /private@example\.com|555-111-2222|CLICK-SECRET|pi_private_transaction/);
+});
+
+test('CPA operations surface missing attribution, failed postbacks, and reversals', () => {
+  const report = buildCpaOperations([
+    {
+      id: 'lead-affiliate-missing-click',
+      leadStage: 'buyer',
+      status: 'purchased',
+      purchasedAt: '2026-07-02T09:00:00Z',
+      attribution: { utm_source: 'network-x', utm_medium: 'affiliate', publisher_id: 'pub-x' },
+      purchase: { orderId: 'txn-1' },
+      commission: { status: 'reversed', reason: 'chargeback' }
+    },
+    {
+      id: 'lead-oasis-failed',
+      leadStage: 'buyer',
+      status: 'purchased',
+      purchasedAt: '2026-07-03T09:00:00Z',
+      attribution: { utm_source: 'oasis', utm_medium: 'affiliate', c3: 'click-ok' },
+      purchase: { orderId: 'txn-2' },
+      oasis: { purchase: { ok: false, status: 500 } }
+    }
+  ]);
+
+  assert.equal(report.totals.reversed, 1);
+  assert.equal(report.totals.flagged, 2);
+  assert.ok(report.rows.find(r => r.leadId === 'lead-affiliate-missing-click').alerts.includes('missing_click_id'));
+  assert.ok(report.rows.find(r => r.leadId === 'lead-oasis-failed').alerts.includes('postback_failed'));
+});
+
+test('CPA CSV export is sanitized and spreadsheet-safe', () => {
+  const csv = buildCpaOperationsCsv(buildCpaOperations([{
+    id: '=lead-formula',
+    email: 'secret@example.com',
+    phone: '555-444-3333',
+    leadStage: 'completed_no_purchase',
+    attribution: {
+      utm_source: 'oasis',
+      utm_medium: 'affiliate',
+      publisher_id: '+publisher',
+      c3: 'very-secret-click-id'
+    }
+  }]));
+
+  assert.match(csv, /lead_id,network,publisher/);
+  assert.match(csv, /'=lead-formula/);
+  assert.match(csv, /'\+publisher/);
+  assert.doesNotMatch(csv, /secret@example\.com|555-444-3333|very-secret-click-id/);
+});
+
+test('Lead Cockpit CPA client script compiles and exposes the operations UI', () => {
+  const html = renderLeadDashboardPage();
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || '';
+  assert.match(html, /CPA Operations/);
+  assert.match(html, /Download CPA CSV/);
+  assert.match(script, /renderCpaOps/);
+  assert.doesNotThrow(() => new Function(script));
 });
 
 test('lead attribution is extracted from Rimo page URLs', () => {
