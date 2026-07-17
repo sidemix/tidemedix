@@ -81,6 +81,53 @@ test('lead attribution merge preserves existing UTMs when later Rimo posts omit 
   assert.equal(attribution.source, 'rimo_customjs');
 });
 
+test('email-assisted Rimo returns preserve the original CPA source and click id', () => {
+  const attribution = mergeLeadAttribution(
+    {
+      utm_source: 'oasis',
+      utm_medium: 'affiliate',
+      utm_campaign: 'oasis_glp1_cpa',
+      c3: 'CPA-CLICK-123'
+    },
+    {
+      attribution: { source: 'rimo_customjs' },
+      page: 'https://try.tidemedix.com/intake/mv-xtyd5b/checkout?utm_source=email&utm_medium=followup&utm_campaign=tidemedix_complete_nopurchase_15m&c3=CPA-CLICK-123'
+    }
+  );
+
+  assert.equal(attribution.utm_source, 'oasis');
+  assert.equal(attribution.utm_medium, 'affiliate');
+  assert.equal(attribution.utm_campaign, 'oasis_glp1_cpa');
+  assert.equal(attribution.c3, 'CPA-CLICK-123');
+  assert.equal(attribution.last_touch_source, 'email');
+  assert.equal(attribution.last_touch_medium, 'followup');
+  assert.equal(attribution.last_touch_campaign, 'tidemedix_complete_nopurchase_15m');
+  assert.equal(attribution.source, 'rimo_customjs');
+
+  const postbackUrl = buildOasisPurchasePostbackUrl(
+    { attribution },
+    { data: { object: { processorTransactionId: 'RIMO-TXN-123' } } }
+  );
+  assert.ok(postbackUrl);
+});
+
+test('CPA click id stays on email checkout-bridge continuation links', () => {
+  const url = buildCheckoutBridgeContinueUrl({
+    attribution: {
+      utm_source: 'oasis',
+      utm_medium: 'affiliate',
+      utm_campaign: 'oasis_glp1_cpa',
+      c3: 'CPA-CLICK-123'
+    },
+    rimo: { leadKey: 'ldk_CPA_TEST', lastStep: 'checkout' }
+  }, { RIMO_INTAKE_URL: 'https://try.tidemedix.com/intake/mv-xtyd5b' }, 'complete_nopurchase_15m');
+
+  const parsed = new URL(url);
+  assert.equal(parsed.searchParams.get('c3'), 'CPA-CLICK-123');
+  assert.equal(parsed.searchParams.get('utm_source'), 'email');
+  assert.equal(parsed.searchParams.get('src'), 'email_complete_nopurchase_15m_bridge_continue');
+});
+
 test('abandoner sequence has four recovery touches back to the Rimo intake', () => {
   assert.deepEqual(ABANDON_EMAIL_STEPS.map(s => s.key), [
     'abandon_20m',

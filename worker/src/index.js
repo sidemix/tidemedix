@@ -613,10 +613,27 @@ export function extractAttributionFromLeadBody(body = {}) {
 
 export function mergeLeadAttribution(existingAttribution = {}, body = {}) {
   const extracted = extractAttributionFromLeadBody(body);
-  return {
+  const merged = {
     ...(existingAttribution || {}),
     ...extracted
   };
+
+  // An email click is an assist, not a new acquisition source. Preserve the
+  // original CPA/paid acquisition fields so a recovered sale remains eligible
+  // for its partner postback, while recording the email touch separately.
+  const isEmailAssist = clean(extracted.utm_source).toLowerCase() === 'email'
+    || clean(extracted.utm_medium).toLowerCase() === 'followup';
+  if (isEmailAssist) {
+    merged.last_touch_source = clean(extracted.utm_source || 'email');
+    merged.last_touch_medium = clean(extracted.utm_medium || 'followup');
+    merged.last_touch_campaign = clean(extracted.utm_campaign || '');
+    merged.last_touch_content = clean(extracted.utm_content || '');
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'clickid', 'affId', 'c1', 'c2', 'c3']) {
+      if (existingAttribution?.[key]) merged[key] = existingAttribution[key];
+    }
+  }
+
+  return merged;
 }
 
 export function classifyLeadForDashboard(lead, now = new Date()) {
@@ -1471,7 +1488,7 @@ function trackedDestinationForStep(lead, step, env, stepKey) {
   if (target === 'bridge') return buildCheckoutBridgeUrl(lead, env, stepKey);
   const raw = target === 'checkout' ? checkoutUrl : (target === 'resume' ? resumeUrl : (target === 'portal' ? portalLinkFor(env) : (target === 'funnel' ? funnelUrl : (target === 'intake' ? intakeUrl : productUrl))));
   const rimoStep = target === 'intake' ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
-  return appendEmailAttribution(raw, stepKey, { target, rimoStep });
+  return appendEmailAttribution(raw, stepKey, { target, rimoStep, attribution: lead?.attribution || {} });
 }
 
 export function buildCheckoutBridgeContinueUrl(lead, env = {}, stepKey = 'checkout_bridge') {
@@ -1482,7 +1499,7 @@ export function buildCheckoutBridgeContinueUrl(lead, env = {}, stepKey = 'checko
     ? (retatrutideLead ? savedRetatrutideUrlForLead(lead, env) : (canResumeRimo ? buildRimoResumeUrl(lead, env) : (normalizeLegacyGenericIntakeUrl(lead.checkoutUrl, env) || buildRimoResumeUrl(lead, env))))
     : intakeLinkFor(env);
   const rimoStep = canResumeRimo || retatrutideLead ? rimoStepSlug(lead?.rimo?.lastStep || '') : '';
-  return appendEmailAttribution(continueRaw, `${stepKey}_bridge_continue`, { target: continueTarget, rimoStep });
+  return appendEmailAttribution(continueRaw, `${stepKey}_bridge_continue`, { target: continueTarget, rimoStep, attribution: lead?.attribution || {} });
 }
 
 export function appendEmailAttribution(rawUrl, stepKey, meta = {}) {
@@ -1502,6 +1519,11 @@ export function appendEmailAttribution(rawUrl, stepKey, meta = {}) {
   url.searchParams.set('src', `email_${stepKey || 'unknown'}`);
   url.searchParams.set('tm_target', target);
   if (rimoStep) url.searchParams.set('rimo_step', rimoStep);
+  const attribution = meta.attribution || {};
+  for (const key of ['c1', 'c2', 'c3', 'affId']) {
+    const value = clean(attribution[key] || '');
+    if (value && !url.searchParams.get(key)) url.searchParams.set(key, value);
+  }
   return url.toString();
 }
 
